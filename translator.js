@@ -1,10 +1,11 @@
 // Korean to English PDF Translator
-// Advanced implementation with layout preservation and accurate text replacement
+// Optimized for speed with batch translation and caching
 
 class PDFTranslator {
     constructor() {
         this.currentPdfBytes = null;
         this.translatedPdf = null;
+        this.translationCache = new Map();
         this.initializeEventListeners();
     }
 
@@ -72,16 +73,19 @@ class PDFTranslator {
             const pdf = await pdfjsLib.getDocument({ data: this.currentPdfBytes }).promise;
             const numPages = pdf.numPages;
             let pageData = [];
+            let allTextItems = [];
 
+            // Extract all text items from all pages
             for (let i = 1; i <= numPages; i++) {
-                this.showLoading(true, `Processing page ${i}/${numPages}...`);
+                this.showLoading(true, `Extracting text from page ${i}/${numPages}...`);
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
                 const viewport = page.getViewport({ scale: 1.0 });
                 
-                // Extract detailed text information with positions
-                const textItems = textContent.items.map(item => ({
+                const textItems = textContent.items.map((item, index) => ({
+                    id: `page${i}_item${index}`,
                     text: item.str,
+                    page: i,
                     x: item.transform[4],
                     y: item.transform[5],
                     width: item.width,
@@ -97,22 +101,28 @@ class PDFTranslator {
                     height: viewport.height,
                     textItems: textItems
                 });
+
+                allTextItems.push(...textItems);
                 
-                this.showProgress(30 + (i / numPages) * 30);
+                this.showProgress(30 + (i / numPages) * 20);
             }
 
-            this.showLoading(true, 'Translating text...');
+            this.showLoading(true, 'Preparing text for translation...');
+            this.showStatus('🔄 Preparing text for batch translation...', 'info');
+            this.showProgress(60);
+
+            // Filter unique texts and prepare batch translation
+            const uniqueTexts = this.getUniqueTexts(allTextItems);
+            
+            this.showLoading(true, `Translating ${uniqueTexts.length} unique text items...`);
             this.showStatus('🔄 Translating Korean text to English...', 'info');
             this.showProgress(70);
 
-            // Translate all text items
-            for (let page of pageData) {
-                for (let item of page.textItems) {
-                    if (item.text.trim()) {
-                        item.translatedText = await this.translateText(item.text);
-                    }
-                }
-            }
+            // Batch translate all unique texts
+            const translations = await this.batchTranslateTexts(uniqueTexts);
+            
+            // Apply translations back to text items
+            this.applyTranslationsToItems(allTextItems, translations);
 
             this.showLoading(true, 'Creating translated PDF...');
             this.showStatus('📝 Creating new PDF with translated text...', 'info');
@@ -133,8 +143,70 @@ class PDFTranslator {
         }
     }
 
-    async translateText(text) {
+    getUniqueTexts(textItems) {
+        const textMap = new Map();
+        const uniqueTexts = [];
+        
+        for (const item of textItems) {
+            if (!item.text.trim()) continue;
+            
+            // Check cache first
+            if (this.translationCache.has(item.text)) {
+                continue;
+            }
+            
+            // Only add unique texts
+            if (!textMap.has(item.text)) {
+                textMap.set(item.text, true);
+                uniqueTexts.push(item.text);
+            }
+        }
+        
+        return uniqueTexts;
+    }
+
+    async batchTranslateTexts(texts) {
+        const translations = new Map();
+        const batchSize = 10; // Process 10 texts at a time
+        
+        for (let i = 0; i < texts.length; i += batchSize) {
+            const batch = texts.slice(i, i + batchSize);
+            const batchTranslations = await Promise.all(
+                batch.map(text => this.translateTextWithCache(text))
+            );
+            
+            // Store in cache and results
+            batch.forEach((text, index) => {
+                const translation = batchTranslations[index];
+                this.translationCache.set(text, translation);
+                translations.set(text, translation);
+            });
+            
+            // Update progress
+            const progress = 70 + (i / texts.length) * 15;
+            this.showProgress(progress);
+            
+            // Small delay to avoid overwhelming the API
+            if (i + batchSize < texts.length) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+        
+        return translations;
+    }
+
+    async translateTextWithCache(text) {
         if (!text.trim()) return "";
+        
+        // Check cache first
+        if (this.translationCache.has(text)) {
+            return this.translationCache.get(text);
+        }
+        
+        // For very short texts, return cached or skip if not Korean
+        if (text.length < 3 && !this.isKoreanText(text)) {
+            return text;
+        }
         
         // Using MyMemory API for Korean to English translation
         const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ko|en`;
@@ -144,16 +216,36 @@ class PDFTranslator {
             const data = await response.json();
             
             if (data.responseData && data.responseData.translatedText) {
-                return data.responseData.translatedText;
+                const translation = data.responseData.translatedText;
+                this.translationCache.set(text, translation);
+                return translation;
             } else if (data.responseStatus === 200) {
+                this.translationCache.set(text, text);
                 return text; // Return original if translation not needed
             } else {
                 console.warn('Translation API warning:', data);
+                this.translationCache.set(text, text);
                 return text; // Fallback to original text
             }
         } catch (error) {
             console.error('Translation API error:', error);
+            this.translationCache.set(text, text);
             return text; // Fallback to original text on error
+        }
+    }
+
+    isKoreanText(text) {
+        // Check if text contains Korean characters
+        return /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/.test(text);
+    }
+
+    applyTranslationsToItems(textItems, translations) {
+        for (const item of textItems) {
+            if (item.text.trim() && translations.has(item.text)) {
+                item.translatedText = translations.get(item.text);
+            } else {
+                item.translatedText = this.translationCache.get(item.text) || item.text;
+            }
         }
     }
 
@@ -168,7 +260,6 @@ class PDFTranslator {
             
             // Embed fonts that support Korean and English characters
             let currentFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-            let currentFontSize = 12;
             
             for (let lineGroup of lineGroups) {
                 if (lineGroup.length === 0) continue;
