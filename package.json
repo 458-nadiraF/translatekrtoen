@@ -1,0 +1,19 @@
+{
+  "name": "korean-pdf-translator",
+  "version": "1.0.0",
+  "description": "Fast Korean to English PDF translator with GitHub Pages deployment",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "echo 'Building for GitHub Pages...'",
+    "deploy": "echo 'Ready for GitHub Pages deployment'"
+  },
+  "keywords": ["pdf", "translate", "korean", "english", "github-pages"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^1.1.1"
+  }
+}
