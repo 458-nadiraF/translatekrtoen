@@ -1,9 +1,9 @@
 // Korean to English PDF Translator
-// Client-side implementation for GitHub Pages deployment
+// Client-side implementation with real text extraction and translation
 
 class PDFTranslator {
     constructor() {
-        this.currentPdf = null;
+        this.currentPdfBytes = null;
         this.translatedPdf = null;
         this.initializeEventListeners();
     }
@@ -14,61 +14,40 @@ class PDFTranslator {
         const translateBtn = document.getElementById('translateBtn');
         const downloadBtn = document.getElementById('downloadBtn');
 
-        // Upload area click
         uploadArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => this.handleFileUpload(e.target.files[0]));
 
-        // File input change
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files[0]) {
-                this.handleFileUpload(e.target.files[0]);
-            }
+        ['dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (eventName === 'dragover') uploadArea.classList.add('dragover');
+                if (eventName === 'dragleave' || eventName === 'drop') uploadArea.classList.remove('dragover');
+                if (eventName === 'drop') this.handleFileUpload(e.dataTransfer.files[0]);
+            });
         });
 
-        // Drag and drop
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files[0] && files[0].type === 'application/pdf') {
-                this.handleFileUpload(files[0]);
-            }
-        });
-
-        // Translate button
-        translateBtn.addEventListener('click', () => {
-            this.translatePDF();
-        });
-
-        // Download button
-        downloadBtn.addEventListener('click', () => {
-            this.downloadTranslatedPDF();
-        });
+        translateBtn.addEventListener('click', () => this.translatePDF());
+        downloadBtn.addEventListener('click', () => this.downloadTranslatedPDF());
     }
 
     async handleFileUpload(file) {
+        if (!file || file.type !== 'application/pdf') {
+            this.showStatus('❌ Please upload a valid PDF file.', 'error');
+            return;
+        }
+
         try {
             this.showStatus('📄 Reading PDF file...', 'info');
             this.showProgress(10);
 
-            const arrayBuffer = await file.arrayBuffer();
-            this.currentPdf = await PDFLib.PDFDocument.load(arrayBuffer);
+            this.currentPdfBytes = await file.arrayBuffer();
             
             this.showStatus('✅ PDF loaded successfully!', 'success');
             this.showProgress(20);
             
-            // Enable translate button
             document.getElementById('translateBtn').disabled = false;
             
-            // Update upload area
             const uploadArea = document.getElementById('uploadArea');
             uploadArea.innerHTML = `
                 <div class="upload-icon">✅</div>
@@ -83,45 +62,41 @@ class PDFTranslator {
     }
 
     async translatePDF() {
-        if (!this.currentPdf) return;
+        if (!this.currentPdfBytes) return;
 
         try {
-            this.showLoading(true);
+            this.showLoading(true, 'Extracting text...');
             this.showStatus('🔍 Extracting text from PDF...', 'info');
             this.showProgress(30);
 
-            // Extract text from all pages
-            const pages = this.currentPdf.getPages();
-            const extractedText = [];
-            
-            for (let i = 0; i < pages.length; i++) {
-                this.showStatus(`📖 Processing page ${i + 1} of ${pages.length}...`, 'info');
-                this.showProgress(30 + (i / pages.length) * 30);
-                
-                // Since we can't extract text directly in browser, we'll use a different approach
-                // We'll create a new PDF with translated text overlay
-                extractedText.push({
-                    page: i + 1,
-                    text: `Korean text from page ${i + 1}` // Placeholder
-                });
+            const pdf = await pdfjsLib.getDocument({ data: this.currentPdfBytes }).promise;
+            const numPages = pdf.numPages;
+            let extractedTexts = [];
+
+            for (let i = 1; i <= numPages; i++) {
+                this.showLoading(true, `Extracting text from page ${i}/${numPages}...`);
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                extractedTexts.push({ page: i, text: pageText });
+                this.showProgress(30 + (i / numPages) * 30);
             }
 
+            this.showLoading(true, 'Translating text...');
             this.showStatus('🔄 Translating text...', 'info');
             this.showProgress(70);
 
-            // Simulate translation (in real implementation, you'd call Google Translate API)
-            const translatedTexts = await this.translateTexts(extractedText);
+            const translatedTexts = await this.translateAllPages(extractedTexts);
 
+            this.showLoading(true, 'Creating translated PDF...');
             this.showStatus('📝 Creating translated PDF...', 'info');
             this.showProgress(85);
 
-            // Create new PDF with translated text
             this.translatedPdf = await this.createTranslatedPDF(translatedTexts);
 
             this.showStatus('✅ Translation complete!', 'success');
             this.showProgress(100);
             
-            // Show download button
             document.getElementById('downloadBtn').style.display = 'inline-block';
             
         } catch (error) {
@@ -132,88 +107,71 @@ class PDFTranslator {
         }
     }
 
-    async translateTexts(texts) {
-        // Simulate Google Translate API call
-        // In production, you'd use: https://translate.googleapis.com/translate_a/single
-        return new Promise(resolve => {
-            setTimeout(() => {
-                const translated = texts.map(item => ({
-                    ...item,
-                    translatedText: `[English Translation] ${item.text}`,
-                    originalText: item.text
-                }));
-                resolve(translated);
-            }, 1000); // Simulate API delay
-        });
+    async translateAllPages(pages) {
+        let translatedPages = [];
+        for (let i = 0; i < pages.length; i++) {
+            this.showLoading(true, `Translating page ${i + 1}/${pages.length}...`);
+            const translatedText = await this.translateText(pages[i].text);
+            translatedPages.push({ ...pages[i], translatedText });
+            this.showProgress(70 + (i / pages.length) * 15);
+        }
+        return translatedPages;
+    }
+
+    async translateText(text) {
+        if (!text.trim()) return "";
+        // Using a free, public API for demonstration. For production, use an official API with a key.
+        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ko|en`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            return data.responseData.translatedText;
+        } catch (error) {
+            console.error('Translation API error:', error);
+            return "[Translation Failed]";
+        }
     }
 
     async createTranslatedPDF(translatedTexts) {
-        const newPdf = await PDFLib.PDFDocument.create();
-        
-        // For demonstration, create simple pages with translated text
-        for (const item of translatedTexts) {
-            const page = newPdf.addPage([595.28, 841.89]); // A4 size
+        const pdfDoc = await PDFLib.PDFDocument.load(this.currentPdfBytes);
+        const pages = pdfDoc.getPages();
+        const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+
+        for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
             const { width, height } = page.getSize();
-            
-            // Add background
-            page.drawRectangle({
-                x: 0,
-                y: 0,
-                width: width,
-                height: height,
-                color: PDFLib.rgb(1, 1, 1)
-            });
+            const translatedPage = translatedTexts.find(p => p.page === i + 1);
 
-            // Add translated text
-            const fontSize = 12;
-            const textHeight = fontSize * 1.2;
-            
-            // Title
-            page.drawText(`Page ${item.page} - Translated`, {
-                x: 50,
-                y: height - 50,
-                size: 16,
-                color: PDFLib.rgb(0.2, 0.2, 0.8)
-            });
-
-            // Original text (smaller, gray)
-            page.drawText('Original Korean:', {
-                x: 50,
-                y: height - 80,
-                size: 10,
-                color: PDFLib.rgb(0.5, 0.5, 0.5)
-            });
-
-            // Translated text
-            const lines = this.wrapText(item.translatedText, width - 100, fontSize);
-            lines.forEach((line, index) => {
-                page.drawText(line, {
-                    x: 50,
-                    y: height - 100 - (index * textHeight),
-                    size: fontSize,
-                    color: PDFLib.rgb(0, 0, 0)
+            if (translatedPage && translatedPage.translatedText) {
+                // Draw a white rectangle to cover the old text.
+                // This is a simple approach; more advanced methods would be needed for complex layouts.
+                page.drawRectangle({
+                    x: 0,
+                    y: 0,
+                    width,
+                    height,
+                    color: PDFLib.rgb(1, 1, 1),
                 });
-            });
-        }
 
-        return newPdf;
+                page.drawText(translatedPage.translatedText, {
+                    x: 50,
+                    y: height - 50,
+                    size: 12,
+                    font,
+                    color: PDFLib.rgb(0, 0, 0),
+                    maxWidth: width - 100,
+                    lineHeight: 14,
+                });
+            }
+        }
+        return pdfDoc;
     }
 
-    wrapText(text, maxWidth, fontSize) {
-        const charsPerLine = Math.floor(maxWidth / (fontSize * 0.6));
-        const lines = [];
-        
-        for (let i = 0; i < text.length; i += charsPerLine) {
-            lines.push(text.slice(i, i + charsPerLine));
-        }
-        
-        return lines;
-    }
-
-    downloadTranslatedPDF() {
+    async downloadTranslatedPDF() {
         if (!this.translatedPdf) return;
 
-        this.translatedPdf.save().then(pdfBytes => {
+        try {
+            const pdfBytes = await this.translatedPdf.save();
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
             
@@ -226,10 +184,10 @@ class PDFTranslator {
             URL.revokeObjectURL(url);
             
             this.showStatus('📥 Download started!', 'success');
-        }).catch(error => {
+        } catch (error) {
             this.showStatus('❌ Download error: ' + error.message, 'error');
             console.error('Download error:', error);
-        });
+        }
     }
 
     showStatus(message, type) {
@@ -239,24 +197,21 @@ class PDFTranslator {
         status.style.display = 'block';
     }
 
-    showLoading(show) {
+    showLoading(show, text = 'Processing...') {
         document.getElementById('loading').style.display = show ? 'block' : 'none';
+        document.getElementById('loadingText').textContent = text;
     }
 
     showProgress(percentage) {
         const progress = document.getElementById('progress');
         const progressBar = document.getElementById('progressBar');
         
-        if (percentage > 0) {
-            progress.style.display = 'block';
-            progressBar.style.width = percentage + '%';
-        } else {
-            progress.style.display = 'none';
+        progress.style.display = 'block';
+        progressBar.style.width = percentage + '%';
+        if (percentage >= 100) {
+            setTimeout(() => { progress.style.display = 'none'; }, 1000);
         }
     }
 }
 
-// Initialize translator when page loads
-document.addEventListener('DOMContentLoaded', () => {
-    new PDFTranslator();
-});
+document.addEventListener('DOMContentLoaded', () => new PDFTranslator());
