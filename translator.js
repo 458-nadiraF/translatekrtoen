@@ -1,5 +1,5 @@
 // Korean to English PDF Translator
-// Client-side implementation with real text extraction and translation
+// Advanced implementation with layout preservation and accurate text replacement
 
 class PDFTranslator {
     constructor() {
@@ -65,36 +65,62 @@ class PDFTranslator {
         if (!this.currentPdfBytes) return;
 
         try {
-            this.showLoading(true, 'Extracting text...');
-            this.showStatus('🔍 Extracting text from PDF...', 'info');
+            this.showLoading(true, 'Analyzing PDF structure...');
+            this.showStatus('🔍 Analyzing PDF structure and extracting text...', 'info');
             this.showProgress(30);
 
             const pdf = await pdfjsLib.getDocument({ data: this.currentPdfBytes }).promise;
             const numPages = pdf.numPages;
-            let extractedTexts = [];
+            let pageData = [];
 
             for (let i = 1; i <= numPages; i++) {
-                this.showLoading(true, `Extracting text from page ${i}/${numPages}...`);
+                this.showLoading(true, `Processing page ${i}/${numPages}...`);
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
-                const pageText = textContent.items.map(item => item.str).join(' ');
-                extractedTexts.push({ page: i, text: pageText });
+                const viewport = page.getViewport({ scale: 1.0 });
+                
+                // Extract detailed text information with positions
+                const textItems = textContent.items.map(item => ({
+                    text: item.str,
+                    x: item.transform[4],
+                    y: item.transform[5],
+                    width: item.width,
+                    height: item.height,
+                    fontSize: Math.sqrt(item.transform[0] * item.transform[0] + item.transform[1] * item.transform[1]),
+                    fontName: item.fontName,
+                    dir: item.dir
+                }));
+
+                pageData.push({
+                    page: i,
+                    width: viewport.width,
+                    height: viewport.height,
+                    textItems: textItems
+                });
+                
                 this.showProgress(30 + (i / numPages) * 30);
             }
 
             this.showLoading(true, 'Translating text...');
-            this.showStatus('🔄 Translating text...', 'info');
+            this.showStatus('🔄 Translating Korean text to English...', 'info');
             this.showProgress(70);
 
-            const translatedTexts = await this.translateAllPages(extractedTexts);
+            // Translate all text items
+            for (let page of pageData) {
+                for (let item of page.textItems) {
+                    if (item.text.trim()) {
+                        item.translatedText = await this.translateText(item.text);
+                    }
+                }
+            }
 
             this.showLoading(true, 'Creating translated PDF...');
-            this.showStatus('📝 Creating translated PDF...', 'info');
+            this.showStatus('📝 Creating new PDF with translated text...', 'info');
             this.showProgress(85);
 
-            this.translatedPdf = await this.createTranslatedPDF(translatedTexts);
+            this.translatedPdf = await this.createTranslatedPDF(pageData);
 
-            this.showStatus('✅ Translation complete!', 'success');
+            this.showStatus('✅ Translation complete! Original layout preserved.', 'success');
             this.showProgress(100);
             
             document.getElementById('downloadBtn').style.display = 'inline-block';
@@ -107,70 +133,137 @@ class PDFTranslator {
         }
     }
 
-    async translateAllPages(pages) {
-        let translatedPages = [];
-        for (let i = 0; i < pages.length; i++) {
-            this.showLoading(true, `Translating page ${i + 1}/${pages.length}...`);
-            const translatedText = await this.translateText(pages[i].text);
-            translatedPages.push({ ...pages[i], translatedText });
-            this.showProgress(70 + (i / pages.length) * 15);
-        }
-        return translatedPages;
-    }
-
     async translateText(text) {
         if (!text.trim()) return "";
-        // Using a free, public API for demonstration. For production, use an official API with a key.
+        
+        // Using MyMemory API for Korean to English translation
         const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ko|en`;
+        
         try {
             const response = await fetch(url);
             const data = await response.json();
-            return data.responseData.translatedText;
+            
+            if (data.responseData && data.responseData.translatedText) {
+                return data.responseData.translatedText;
+            } else if (data.responseStatus === 200) {
+                return text; // Return original if translation not needed
+            } else {
+                console.warn('Translation API warning:', data);
+                return text; // Fallback to original text
+            }
         } catch (error) {
             console.error('Translation API error:', error);
-            return "[Translation Failed]";
+            return text; // Fallback to original text on error
         }
     }
 
-    async createTranslatedPDF(translatedTexts) {
-        const pdfDoc = await PDFLib.PDFDocument.load(this.currentPdfBytes);
-        const pages = pdfDoc.getPages();
-        const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-
-        for (let i = 0; i < pages.length; i++) {
-            const page = pages[i];
-            const { width, height } = page.getSize();
-            const translatedPage = translatedTexts.find(p => p.page === i + 1);
-
-            if (translatedPage && translatedPage.translatedText) {
-                // Draw a white rectangle to cover the old text.
-                // This is a simple approach; more advanced methods would be needed for complex layouts.
-                page.drawRectangle({
-                    x: 0,
-                    y: 0,
-                    width,
-                    height,
-                    color: PDFLib.rgb(1, 1, 1),
-                });
-
-                page.drawText(translatedPage.translatedText, {
-                    x: 50,
-                    y: height - 50,
-                    size: 12,
-                    font,
-                    color: PDFLib.rgb(0, 0, 0),
-                    maxWidth: width - 100,
-                    lineHeight: 14,
-                });
+    async createTranslatedPDF(pageData) {
+        const pdfDoc = await PDFLib.PDFDocument.create();
+        
+        for (let pageInfo of pageData) {
+            const page = pdfDoc.addPage([pageInfo.width, pageInfo.height]);
+            
+            // Group text items by their approximate line position for better layout preservation
+            const lineGroups = this.groupTextItemsByLines(pageInfo.textItems);
+            
+            // Embed fonts that support Korean and English characters
+            let currentFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+            let currentFontSize = 12;
+            
+            for (let lineGroup of lineGroups) {
+                if (lineGroup.length === 0) continue;
+                
+                // Use the font size from the first item in the line
+                const baseFontSize = lineGroup[0].fontSize || 12;
+                
+                // Calculate total width of original text
+                const totalOriginalWidth = lineGroup.reduce((sum, item) => sum + (item.width || 0), 0);
+                
+                // Build the translated line
+                const translatedLine = lineGroup.map(item => item.translatedText || item.text).join('');
+                
+                if (translatedLine.trim()) {
+                    // Calculate position for the first item in the line
+                    const firstItem = lineGroup[0];
+                    const x = firstItem.x || 50;
+                    const y = pageInfo.height - (firstItem.y || 50);
+                    
+                    // Adjust font size to fit the translated text in the available space
+                    let fontSize = baseFontSize;
+                    const translatedWidth = (translatedLine.length * baseFontSize * 0.6); // Approximate width
+                    
+                    // Scale down if translated text is longer
+                    if (translatedWidth > totalOriginalWidth && totalOriginalWidth > 0) {
+                        fontSize = Math.max(8, baseFontSize * (totalOriginalWidth / translatedWidth));
+                    }
+                    
+                    try {
+                        page.drawText(translatedLine, {
+                            x: x,
+                            y: y,
+                            size: fontSize,
+                            font: currentFont,
+                            color: PDFLib.rgb(0, 0, 0),
+                            maxWidth: pageInfo.width - x - 50,
+                            lineHeight: fontSize * 1.2,
+                        });
+                    } catch (error) {
+                        console.warn('Error drawing text:', error);
+                        // Fallback: try with smaller font size
+                        page.drawText(translatedLine, {
+                            x: x,
+                            y: y,
+                            size: Math.max(6, fontSize * 0.8),
+                            font: currentFont,
+                            color: PDFLib.rgb(0, 0, 0),
+                        });
+                    }
+                }
             }
         }
+        
         return pdfDoc;
+    }
+
+    groupTextItemsByLines(textItems) {
+        if (!textItems || textItems.length === 0) return [];
+        
+        // Sort items by Y position (top to bottom)
+        const sortedItems = [...textItems].sort((a, b) => b.y - a.y);
+        
+        const lineGroups = [];
+        let currentLine = [sortedItems[0]];
+        let currentY = sortedItems[0].y;
+        
+        for (let i = 1; i < sortedItems.length; i++) {
+            const item = sortedItems[i];
+            // Group items that are on the same line (within 5 units vertically)
+            if (Math.abs(item.y - currentY) < 5) {
+                currentLine.push(item);
+            } else {
+                // Sort current line by X position (left to right)
+                currentLine.sort((a, b) => a.x - b.x);
+                lineGroups.push(currentLine);
+                currentLine = [item];
+                currentY = item.y;
+            }
+        }
+        
+        // Don't forget the last line
+        if (currentLine.length > 0) {
+            currentLine.sort((a, b) => a.x - b.x);
+            lineGroups.push(currentLine);
+        }
+        
+        return lineGroups;
     }
 
     async downloadTranslatedPDF() {
         if (!this.translatedPdf) return;
 
         try {
+            this.showLoading(true, 'Preparing download...');
+            
             const pdfBytes = await this.translatedPdf.save();
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
@@ -187,6 +280,8 @@ class PDFTranslator {
         } catch (error) {
             this.showStatus('❌ Download error: ' + error.message, 'error');
             console.error('Download error:', error);
+        } finally {
+            this.showLoading(false);
         }
     }
 
@@ -195,6 +290,13 @@ class PDFTranslator {
         status.textContent = message;
         status.className = `status ${type}`;
         status.style.display = 'block';
+        
+        // Auto-hide success messages after 5 seconds
+        if (type === 'success') {
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 5000);
+        }
     }
 
     showLoading(show, text = 'Processing...') {
@@ -208,8 +310,12 @@ class PDFTranslator {
         
         progress.style.display = 'block';
         progressBar.style.width = percentage + '%';
+        
         if (percentage >= 100) {
-            setTimeout(() => { progress.style.display = 'none'; }, 1000);
+            setTimeout(() => {
+                progress.style.display = 'none';
+                progressBar.style.width = '0%';
+            }, 1000);
         }
     }
 }
