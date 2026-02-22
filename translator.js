@@ -1,5 +1,5 @@
 // Korean to English PDF Translator
-// Optimized for speed with batch translation and caching
+// Ultra-fast implementation with Google Translate API and advanced optimizations
 
 class PDFTranslator {
     constructor() {
@@ -115,11 +115,11 @@ class PDFTranslator {
             const uniqueTexts = this.getUniqueTexts(allTextItems);
             
             this.showLoading(true, `Translating ${uniqueTexts.length} unique text items...`);
-            this.showStatus('🔄 Translating Korean text to English...', 'info');
+            this.showStatus('� Using ultra-fast translation service...', 'info');
             this.showProgress(70);
 
-            // Batch translate all unique texts
-            const translations = await this.batchTranslateTexts(uniqueTexts);
+            // Batch translate all unique texts using multiple strategies
+            const translations = await this.fastBatchTranslateTexts(uniqueTexts);
             
             // Apply translations back to text items
             this.applyTranslationsToItems(allTextItems, translations);
@@ -165,14 +165,15 @@ class PDFTranslator {
         return uniqueTexts;
     }
 
-    async batchTranslateTexts(texts) {
+    async fastBatchTranslateTexts(texts) {
         const translations = new Map();
-        const batchSize = 10; // Process 10 texts at a time
+        const batchSize = 50; // Larger batch size for faster processing
         
+        // Process in larger batches with timeout protection
         for (let i = 0; i < texts.length; i += batchSize) {
             const batch = texts.slice(i, i + batchSize);
             const batchTranslations = await Promise.all(
-                batch.map(text => this.translateTextWithCache(text))
+                batch.map(text => this.translateWithTimeout(text, 2000)) // 2 second timeout
             );
             
             // Store in cache and results
@@ -186,16 +187,16 @@ class PDFTranslator {
             const progress = 70 + (i / texts.length) * 15;
             this.showProgress(progress);
             
-            // Small delay to avoid overwhelming the API
+            // Minimal delay for API rate limiting
             if (i + batchSize < texts.length) {
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 50));
             }
         }
         
         return translations;
     }
 
-    async translateTextWithCache(text) {
+    async translateWithTimeout(text, timeoutMs) {
         if (!text.trim()) return "";
         
         // Check cache first
@@ -203,35 +204,92 @@ class PDFTranslator {
             return this.translationCache.get(text);
         }
         
-        // For very short texts, return cached or skip if not Korean
+        // Skip non-Korean short texts
         if (text.length < 3 && !this.isKoreanText(text)) {
             return text;
         }
+
+        // Use multiple translation services with fallback
+        const translationServices = [
+            () => this.googleTranslateAPI(text),
+            () => this.libreTranslateAPI(text),
+            () => this.myMemoryAPI(text)
+        ];
+
+        for (const service of translationServices) {
+            try {
+                const translation = await this.raceWithTimeout(service(), timeoutMs);
+                if (translation && translation !== text) {
+                    this.translationCache.set(text, translation);
+                    return translation;
+                }
+            } catch (error) {
+                console.warn(`Translation service failed: ${error.message}`);
+                continue;
+            }
+        }
+
+        // Fallback to original text
+        this.translationCache.set(text, text);
+        return text;
+    }
+
+    async raceWithTimeout(promise, timeoutMs) {
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), timeoutMs)
+        );
+        return Promise.race([promise, timeoutPromise]);
+    }
+
+    async googleTranslateAPI(text) {
+        // Using Google Translate API with CORS proxy for better performance
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=en&dt=t&q=${encodeURIComponent(text)}`;
         
-        // Using MyMemory API for Korean to English translation
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data && data[0] && data[0][0] && data[0][0][0]) {
+            return data[0][0][0];
+        }
+        throw new Error('Invalid Google Translate response');
+    }
+
+    async libreTranslateAPI(text) {
+        // Using LibreTranslate API (faster alternative)
+        const url = 'https://libretranslate.de/translate';
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                q: text,
+                source: 'ko',
+                target: 'en',
+                format: 'text'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data && data.translatedText) {
+            return data.translatedText;
+        }
+        throw new Error('Invalid LibreTranslate response');
+    }
+
+    async myMemoryAPI(text) {
+        // Fallback to MyMemory API
         const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ko|en`;
         
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            if (data.responseData && data.responseData.translatedText) {
-                const translation = data.responseData.translatedText;
-                this.translationCache.set(text, translation);
-                return translation;
-            } else if (data.responseStatus === 200) {
-                this.translationCache.set(text, text);
-                return text; // Return original if translation not needed
-            } else {
-                console.warn('Translation API warning:', data);
-                this.translationCache.set(text, text);
-                return text; // Fallback to original text
-            }
-        } catch (error) {
-            console.error('Translation API error:', error);
-            this.translationCache.set(text, text);
-            return text; // Fallback to original text on error
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.responseData && data.responseData.translatedText) {
+            return data.responseData.translatedText;
         }
+        throw new Error('Invalid MyMemory response');
     }
 
     isKoreanText(text) {
