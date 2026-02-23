@@ -15,10 +15,37 @@ class PDFTranslator {
         this.currentPdfBytes = null;
         this.translatedPdf = null;
         this.translationCache = new Map();
+        this.translationStats = {
+            totalRequests: 0,
+            cacheHits: 0,
+            cacheMisses: 0,
+            avgResponseTime: 0,
+            startTime: null
+        };
+        
+        // Pre-populate cache with common Korean words
+        this.preloadCommonTranslations();
+        
         // Only initialize browser-specific elements in browser environment
         if (typeof document !== 'undefined') {
             this.initializeEventListeners();
         }
+    }
+    
+    preloadCommonTranslations() {
+        // Pre-load common Korean words that appear frequently in PDFs
+        const commonWords = [
+            ['한국', 'Korea'], ['한국어', 'Korean'], ['영어', 'English'], ['번역', 'Translation'],
+            ['문서', 'Document'], ['페이지', 'Page'], ['파일', 'File'], ['내용', 'Content'],
+            ['제목', 'Title'], ['부제', 'Subtitle'], ['본문', 'Body'], ['요약', 'Summary'],
+            ['서론', 'Introduction'], ['결론', 'Conclusion'], ['참고', 'Reference'], ['그림', 'Figure'],
+            ['표', 'Table'], ['차트', 'Chart'], ['그래프', 'Graph'], ['설명', 'Description'],
+            ['정의', 'Definition'], ['예시', 'Example'], ['주의', 'Caution'], ['중요', 'Important']
+        ];
+        
+        commonWords.forEach(([korean, english]) => {
+            this.translationCache.set(korean, english);
+        });
     }
 
     initializeEventListeners() {
@@ -78,6 +105,7 @@ class PDFTranslator {
         if (!this.currentPdfBytes) return;
 
         try {
+            this.translationStats.startTime = Date.now();
             this.showLoading(true, 'Analyzing PDF structure...');
             this.showStatus('🔍 Analyzing PDF structure and extracting text...', 'info');
             this.showProgress(30);
@@ -127,7 +155,7 @@ class PDFTranslator {
             const uniqueTexts = this.getUniqueTexts(allTextItems);
             
             this.showLoading(true, `Translating ${uniqueTexts.length} unique text items...`);
-            this.showStatus('� Using ultra-fast translation service...', 'info');
+            this.showStatus('⚡ Using ultra-fast translation service...', 'info');
             this.showProgress(70);
 
             // Batch translate all unique texts using multiple strategies
@@ -142,7 +170,10 @@ class PDFTranslator {
 
             this.translatedPdf = await this.modifyExistingPDF(this.currentPdfBytes, pageData);
 
-            this.showStatus('✅ Translation complete! Original layout preserved.', 'success');
+            const totalTime = Date.now() - this.translationStats.startTime;
+            const avgTime = totalTime / Math.max(uniqueTexts.length, 1);
+            
+            this.showStatus(`✅ Translation complete! ${uniqueTexts.length} items translated in ${(totalTime/1000).toFixed(1)}s (avg: ${avgTime.toFixed(0)}ms/item)`, 'success');
             this.showProgress(100);
             
             document.getElementById('downloadBtn').style.display = 'inline-block';
@@ -179,33 +210,67 @@ class PDFTranslator {
 
     async fastBatchTranslateTexts(texts) {
         const translations = new Map();
-        const batchSize = 50; // Larger batch size for faster processing
+        const batchSize = 200; // Increased batch size for much faster processing
+        const maxConcurrency = 10; // Maximum concurrent API calls
         
-        // Process in larger batches with timeout protection
-        for (let i = 0; i < texts.length; i += batchSize) {
-            const batch = texts.slice(i, i + batchSize);
-            const batchTranslations = await Promise.all(
-                batch.map(text => this.translateWithTimeout(text, 2000)) // 2 second timeout
-            );
+        // Process in parallel batches with controlled concurrency
+        const processBatch = async (startIdx) => {
+            const endIdx = Math.min(startIdx + batchSize, texts.length);
+            const batch = texts.slice(startIdx, endIdx);
             
-            // Store in cache and results
+            // Process batch with controlled concurrency
+            const batchTranslations = await this.processBatchWithConcurrency(batch, maxConcurrency);
+            
+            // Store results
             batch.forEach((text, index) => {
                 const translation = batchTranslations[index];
                 this.translationCache.set(text, translation);
                 translations.set(text, translation);
             });
             
-            // Update progress
-            const progress = 70 + (i / texts.length) * 15;
+            return endIdx;
+        };
+        
+        // Process all batches in parallel
+        const batchPromises = [];
+        for (let i = 0; i < texts.length; i += batchSize) {
+            batchPromises.push(processBatch(i));
+        }
+        
+        // Wait for all batches to complete with progress updates
+        let completedBatches = 0;
+        for (const promise of batchPromises) {
+            await promise;
+            completedBatches++;
+            const progress = 70 + (completedBatches / batchPromises.length) * 15;
             this.showProgress(progress);
-            
-            // Minimal delay for API rate limiting
-            if (i + batchSize < texts.length) {
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
         }
         
         return translations;
+    }
+    
+    async processBatchWithConcurrency(texts, maxConcurrency) {
+        // Process texts with controlled concurrency using worker pool pattern
+        const results = new Array(texts.length);
+        const queue = texts.map((text, index) => ({ text, index }));
+        
+        // Create worker promises
+        const workers = Array.from({ length: maxConcurrency }, async () => {
+            while (queue.length > 0) {
+                const { text, index } = queue.shift();
+                try {
+                    results[index] = await this.translateWithTimeout(text, 3000); // Increased timeout
+                } catch (error) {
+                    console.error(`Translation failed for text: ${text.substring(0, 50)}...`, error);
+                    results[index] = text; // Fallback to original text
+                }
+            }
+        });
+        
+        // Wait for all workers to complete
+        await Promise.all(workers);
+        
+        return results;
     }
 
     async translateWithTimeout(text, timeoutMs) {
@@ -221,24 +286,34 @@ class PDFTranslator {
             return text;
         }
 
-        // Use multiple translation services with fallback
+        // Use multiple translation services with fallback - prioritize fastest APIs first
         const translationServices = [
-            () => this.googleTranslateAPI(text),
-            () => this.libreTranslateAPI(text),
-            () => this.myMemoryAPI(text)
+            { service: () => this.googleTranslateAPI(text), name: 'Google', priority: 1 },
+            { service: () => this.libreTranslateAPI(text), name: 'Libre', priority: 2 },
+            { service: () => this.myMemoryAPI(text), name: 'MyMemory', priority: 3 }
         ];
 
-        for (const service of translationServices) {
-            try {
-                const translation = await this.raceWithTimeout(service(), timeoutMs);
-                if (translation && translation !== text) {
-                    this.translationCache.set(text, translation);
-                    return translation;
+        // Race all services simultaneously and use the fastest successful response
+        try {
+            const racePromises = translationServices.map(({ service, name }) => 
+                this.raceWithTimeout(service(), timeoutMs).then(translation => ({
+                    translation,
+                    name,
+                    success: translation && translation !== text
+                }))
+            );
+            
+            // Wait for the first successful translation
+            const results = await Promise.allSettled(racePromises);
+            
+            for (const result of results) {
+                if (result.status === 'fulfilled' && result.value.success) {
+                    this.translationCache.set(text, result.value.translation);
+                    return result.value.translation;
                 }
-            } catch (error) {
-                console.warn(`Translation service failed: ${error.message}`);
-                continue;
             }
+        } catch (error) {
+            console.warn(`All translation services failed for text: ${text.substring(0, 50)}...`);
         }
 
         // Fallback to original text
