@@ -243,53 +243,83 @@ class PDFTranslator {
 
     async googleTranslateAPI(text) {
         // Using Google Translate API with CORS proxy for better performance
-        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=en&dt=t&q=${encodeURIComponent(text)}`;
+        // Ensure proper encoding for Korean text
+        const encodedText = encodeURIComponent(text);
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=en&dt=t&q=${encodedText}`;
         
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data && data[0] && data[0][0] && data[0][0][0]) {
-            return data[0][0][0];
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Google Translate API error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data && data[0] && data[0][0] && data[0][0][0]) {
+                return data[0][0][0];
+            }
+            throw new Error('Invalid Google Translate response structure');
+        } catch (error) {
+            console.error('Google Translate API error:', error);
+            throw error;
         }
-        throw new Error('Invalid Google Translate response');
     }
 
     async libreTranslateAPI(text) {
         // Using LibreTranslate API (faster alternative)
         const url = 'https://libretranslate.de/translate';
         
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                q: text,
-                source: 'ko',
-                target: 'en',
-                format: 'text'
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data && data.translatedText) {
-            return data.translatedText;
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    q: text,
+                    source: 'ko',
+                    target: 'en',
+                    format: 'text'
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`LibreTranslate API error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data && data.translatedText) {
+                return data.translatedText;
+            }
+            throw new Error('Invalid LibreTranslate response structure');
+        } catch (error) {
+            console.error('LibreTranslate API error:', error);
+            throw error;
         }
-        throw new Error('Invalid LibreTranslate response');
     }
 
     async myMemoryAPI(text) {
         // Fallback to MyMemory API
-        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ko|en`;
+        const encodedText = encodeURIComponent(text);
+        const url = `https://api.mymemory.translated.net/get?q=${encodedText}&langpair=ko|en`;
         
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data.responseData && data.responseData.translatedText) {
-            return data.responseData.translatedText;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`MyMemory API error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.responseData && data.responseData.translatedText) {
+                return data.responseData.translatedText;
+            }
+            throw new Error('Invalid MyMemory response structure');
+        } catch (error) {
+            console.error('MyMemory API error:', error);
+            throw error;
         }
-        throw new Error('Invalid MyMemory response');
     }
 
     isKoreanText(text) {
@@ -313,18 +343,33 @@ class PDFTranslator {
     }
 
     convertToASCIIOnly(text) {
-        // Convert text to ASCII-only as final fallback
+        // Convert text to ASCII-only as final fallback - PRESERVE KOREAN TEXT!
         if (!text) return '';
         
-        // For Korean text, try to preserve meaning by converting to romanization
+        // For Korean text, we should NOT destroy it - Korean characters are valid Unicode
         if (this.isKoreanText(text)) {
-            // Basic romanization for common Korean characters
+            // Korean text should be preserved, not destroyed
+            // Only replace problematic symbols, keep Korean Hangul intact
             return text
-                .replace(/[ᄀ-ᅚ]/g, '') // Remove Korean consonants that can't be encoded
-                .replace(/[ᅡ-ᅵ]/g, '') // Remove Korean vowels that can't be encoded
-                .replace(/[가-힣]/g, '?') // Replace Korean syllables with placeholder
-                .replace(/[^\x00-\x7F]/g, '?') // Replace any remaining non-ASCII with ?
-                .trim() || '[Korean Text]';
+                .replace(/[∙•·]/g, '*')   // Various bullet points -> asterisk
+                .replace(/[–—]/g, '-')   // Various dashes -> hyphen
+                .replace(/["""]/g, '"')   // Smart quotes -> regular quotes
+                .replace(/['''']/g, "'")  // Smart apostrophes -> regular apostrophe
+                .replace(/[…]/g, '...')   // Ellipsis -> three dots
+                .replace(/[‹›]/g, '<')   // Angle quotes -> less than
+                .replace(/[«»]/g, '<<')  // Guillemets -> double less than
+                .replace(/[±]/g, '+/-')  // Plus-minus
+                .replace(/[×]/g, 'x')     // Multiplication -> x
+                .replace(/[÷]/g, '/')     // Division -> slash
+                .replace(/[≤]/g, '<=')    // Less than or equal
+                .replace(/[≥]/g, '>=')    // Greater than or equal
+                .replace(/[≠]/g, '!=')    // Not equal
+                .replace(/[∞]/g, 'inf')   // Infinity
+                .replace(/[√]/g, 'sqrt')  // Square root
+                .replace(/[™]/g, '(TM)')  // Trademark
+                .replace(/[®]/g, '(R)')   // Registered
+                .replace(/[©]/g, '(C)')   // Copyright
+                .trim() || text; // If everything gets stripped, return original
         }
         
         // For non-Korean text, replace with ASCII equivalents
@@ -360,7 +405,33 @@ class PDFTranslator {
         if (this.isKoreanText(text)) {
             // For Korean text, we'll use a more conservative approach
             // Allow Korean Hangul syllables, Korean consonants/vowels, basic Latin, and common symbols
-            return text.replace(/[^\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F\u0020-\u007E\u00A0-\u00FF\u2010-\u2015\u2022\u2026\u2032-\u2033]/g, '?');
+            // Korean Unicode ranges: Hangul syllables, Jamo consonants, Jamo vowels
+            const koreanPattern = /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/g;
+            
+            // Replace only truly problematic characters, preserve Korean text
+            return text
+                .replace(/[∙•·]/g, '*')   // Various bullet points -> asterisk
+                .replace(/[–—]/g, '-')   // Various dashes -> hyphen
+                .replace(/["""]/g, '"')   // Smart quotes -> regular quotes
+                .replace(/['''']/g, "'")  // Smart apostrophes -> regular apostrophe
+                .replace(/[…]/g, '...')   // Ellipsis -> three dots
+                .replace(/[‹›]/g, '<')   // Angle quotes -> less than
+                .replace(/[«»]/g, '<<')  // Guillemets -> double less than
+                .replace(/[±]/g, '+/-')  // Plus-minus
+                .replace(/[×]/g, 'x')     // Multiplication -> x
+                .replace(/[÷]/g, '/')     // Division -> slash
+                .replace(/[≤]/g, '<=')    // Less than or equal
+                .replace(/[≥]/g, '>=')    // Greater than or equal
+                .replace(/[≠]/g, '!=')    // Not equal
+                .replace(/[∞]/g, 'inf')   // Infinity
+                .replace(/[√]/g, 'sqrt')  // Square root
+                .replace(/[™]/g, '(TM)')  // Trademark
+                .replace(/[®]/g, '(R)')   // Registered
+                .replace(/[©]/g, '(C)')   // Copyright
+                .replace(/[^\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F\u0020-\u007E\u00A0-\u00FF\u2010-\u2015\u2022\u2026\u2032-\u2033]/g, (match) => {
+                    // If it's Korean, keep it, otherwise replace with ?
+                    return koreanPattern.test(match) ? match : '?';
+                });
         }
         
         // For non-Korean text, replace problematic Unicode characters with ASCII equivalents
@@ -400,42 +471,44 @@ class PDFTranslator {
     async createTranslatedPDF(pageData) {
         const pdfDoc = await PDFLib.PDFDocument.create();
         
-        // Embed fonts that support Unicode characters
+        // Embed fonts that support Unicode characters (especially Korean)
         let unicodeFont;
         try {
-            // Try multiple standard fonts in order of Unicode support
+            // For Korean text, we need fonts that support Unicode properly
+            // Try fonts in order of Unicode support for Korean characters
             const fontOptions = [
-                PDFLib.StandardFonts.Helvetica,
-                PDFLib.StandardFonts.TimesRoman,
-                PDFLib.StandardFonts.Courier,
-                PDFLib.StandardFonts.Symbol
+                PDFLib.StandardFonts.Helvetica,  // Good Unicode support
+                PDFLib.StandardFonts.TimesRoman, // Decent Unicode support
+                PDFLib.StandardFonts.Courier,    // Basic Unicode support
+                PDFLib.StandardFonts.Symbol      // Symbol font as fallback
             ];
             
             for (const fontOption of fontOptions) {
                 try {
                     unicodeFont = await pdfDoc.embedFont(fontOption, { 
                         subset: true,
-                        customName: 'UnicodeFont'
+                        customName: 'KoreanFont'
                     });
                     break;
                 } catch (fontError) {
-                    console.warn(`Font ${fontOption} failed, trying next...`);
+                    console.warn(`Font ${fontOption} failed for Korean text, trying next...`);
                     continue;
                 }
             }
             
             // Final fallback with subsetting to handle Unicode better
             if (!unicodeFont) {
+                console.warn('Using Helvetica as final fallback for Korean text');
                 unicodeFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica, {
                     subset: true,
-                    customName: 'FallbackFont'
+                    customName: 'KoreanFallbackFont'
                 });
             }
         } catch (error) {
-            console.warn('All font embedding failed, using Helvetica:', error);
+            console.error('All font embedding failed for Korean text:', error);
             unicodeFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica, {
                 subset: true,
-                customName: 'ErrorFallbackFont'
+                customName: 'ErrorKoreanFont'
             });
         }
         
@@ -515,40 +588,41 @@ class PDFTranslator {
         // Copy all pages from the original PDF
         const copiedPages = await pdfDoc.copyPages(originalPdf, originalPdf.getPageIndices());
         
-        // Embed fonts that support Unicode characters
+        // Embed fonts that support Unicode characters (especially Korean)
         let unicodeFont;
         try {
             const fontOptions = [
-                PDFLib.StandardFonts.Helvetica,
-                PDFLib.StandardFonts.TimesRoman,
-                PDFLib.StandardFonts.Courier,
-                PDFLib.StandardFonts.Symbol
+                PDFLib.StandardFonts.Helvetica,  // Good Unicode support
+                PDFLib.StandardFonts.TimesRoman, // Decent Unicode support
+                PDFLib.StandardFonts.Courier,    // Basic Unicode support
+                PDFLib.StandardFonts.Symbol      // Symbol font as fallback
             ];
             
             for (const fontOption of fontOptions) {
                 try {
                     unicodeFont = await pdfDoc.embedFont(fontOption, { 
                         subset: true,
-                        customName: 'UnicodeFont'
+                        customName: 'KoreanFont'
                     });
                     break;
                 } catch (fontError) {
-                    console.warn(`Font ${fontOption} failed, trying next...`);
+                    console.warn(`Font ${fontOption} failed for Korean text, trying next...`);
                     continue;
                 }
             }
             
             if (!unicodeFont) {
+                console.warn('Using Helvetica as final fallback for Korean text');
                 unicodeFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica, {
                     subset: true,
-                    customName: 'FallbackFont'
+                    customName: 'KoreanFallbackFont'
                 });
             }
         } catch (error) {
-            console.warn('All font embedding failed, using Helvetica:', error);
+            console.error('All font embedding failed for Korean text:', error);
             unicodeFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica, {
                 subset: true,
-                customName: 'ErrorFallbackFont'
+                customName: 'ErrorKoreanFont'
             });
         }
         
