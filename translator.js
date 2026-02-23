@@ -128,7 +128,7 @@ class PDFTranslator {
             this.showStatus('📝 Creating new PDF with translated text...', 'info');
             this.showProgress(85);
 
-            this.translatedPdf = await this.createTranslatedPDF(pageData);
+            this.translatedPdf = await this.modifyExistingPDF(this.currentPdfBytes, pageData);
 
             this.showStatus('✅ Translation complete! Original layout preserved.', 'success');
             this.showProgress(100);
@@ -297,6 +297,49 @@ class PDFTranslator {
         return /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/.test(text);
     }
 
+    validateTextForFont(text, font) {
+        // Validate text can be encoded by the font
+        if (!text) return '';
+        
+        try {
+            // Try to encode the text with the font
+            const testBytes = font.encodeText(text);
+            return text;
+        } catch (error) {
+            console.warn(`Font encoding failed for text: "${text}", error:`, error);
+            // If encoding fails, try to sanitize more aggressively
+            return this.convertToASCIIOnly(text);
+        }
+    }
+
+    convertToASCIIOnly(text) {
+        // Convert text to ASCII-only as final fallback
+        if (!text) return '';
+        
+        // For Korean text, try to preserve meaning by converting to romanization
+        if (this.isKoreanText(text)) {
+            // Basic romanization for common Korean characters
+            return text
+                .replace(/[ᄀ-ᅚ]/g, '') // Remove Korean consonants that can't be encoded
+                .replace(/[ᅡ-ᅵ]/g, '') // Remove Korean vowels that can't be encoded
+                .replace(/[가-힣]/g, '?') // Replace Korean syllables with placeholder
+                .replace(/[^\x00-\x7F]/g, '?') // Replace any remaining non-ASCII with ?
+                .trim() || '[Korean Text]';
+        }
+        
+        // For non-Korean text, replace with ASCII equivalents
+        return text
+            .replace(/[∙•·]/g, '*')
+            .replace(/[–—]/g, '-')
+            .replace(/["""]/g, '"')
+            .replace(/['''']/g, "'")
+            .replace(/[…]/g, '...')
+            .replace(/[‹›«»]/g, '<')
+            .replace(/[±×÷≤≥≠∞√™®©]/g, '?')
+            .replace(/[^\x00-\x7F]/g, '?') // Replace any non-ASCII with ?
+            .trim() || '[Text]';
+    }
+
     sanitizeTextForPDF(text) {
         // Comprehensive text sanitization for PDF compatibility
         if (!text) return '';
@@ -316,7 +359,8 @@ class PDFTranslator {
         // First, try to preserve Korean characters if present
         if (this.isKoreanText(text)) {
             // For Korean text, we'll use a more conservative approach
-            return text.replace(/[^\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F\u0020-\u007E\u00A0-\u00FF]/g, '?');
+            // Allow Korean Hangul syllables, Korean consonants/vowels, basic Latin, and common symbols
+            return text.replace(/[^\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F\u0020-\u007E\u00A0-\u00FF\u2010-\u2015\u2022\u2026\u2032-\u2033]/g, '?');
         }
         
         // For non-Korean text, replace problematic Unicode characters with ASCII equivalents
@@ -361,15 +405,18 @@ class PDFTranslator {
         try {
             // Try multiple standard fonts in order of Unicode support
             const fontOptions = [
-                PDFLib.StandardFonts.TimesRoman,
                 PDFLib.StandardFonts.Helvetica,
+                PDFLib.StandardFonts.TimesRoman,
                 PDFLib.StandardFonts.Courier,
                 PDFLib.StandardFonts.Symbol
             ];
             
             for (const fontOption of fontOptions) {
                 try {
-                    unicodeFont = await pdfDoc.embedFont(fontOption);
+                    unicodeFont = await pdfDoc.embedFont(fontOption, { 
+                        subset: true,
+                        customName: 'UnicodeFont'
+                    });
                     break;
                 } catch (fontError) {
                     console.warn(`Font ${fontOption} failed, trying next...`);
@@ -377,13 +424,19 @@ class PDFTranslator {
                 }
             }
             
-            // Final fallback
+            // Final fallback with subsetting to handle Unicode better
             if (!unicodeFont) {
-                unicodeFont = await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRoman);
+                unicodeFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica, {
+                    subset: true,
+                    customName: 'FallbackFont'
+                });
             }
         } catch (error) {
-            console.warn('All font embedding failed, using TimesRoman:', error);
-            unicodeFont = await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRoman);
+            console.warn('All font embedding failed, using Helvetica:', error);
+            unicodeFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica, {
+                subset: true,
+                customName: 'ErrorFallbackFont'
+            });
         }
         
         for (let pageInfo of pageData) {
@@ -422,8 +475,11 @@ class PDFTranslator {
                     }
                     
                     try {
-                        // Use the sanitized text that handles Unicode issues
-                        page.drawText(sanitizedLine, {
+                        // Pre-validate the text can be encoded by the font
+                        const validatedText = this.validateTextForFont(sanitizedLine, unicodeFont);
+                        
+                        // Use the validated text that handles Unicode issues
+                        page.drawText(validatedText, {
                             x: x,
                             y: y,
                             size: fontSize,
@@ -434,9 +490,165 @@ class PDFTranslator {
                         });
                     } catch (error) {
                         console.warn('Error drawing text:', error);
-                        // Fallback: try with smaller font size and extra sanitization
-                        const extraSanitizedLine = this.filterUnicodeForStandardFonts(sanitizedLine);
-                        page.drawText(extraSanitizedLine, {
+                        // Fallback: try with ASCII-only text
+                        const asciiOnlyText = this.convertToASCIIOnly(sanitizedLine);
+                        page.drawText(asciiOnlyText, {
+                            x: x,
+                            y: y,
+                            size: Math.max(6, fontSize * 0.8),
+                            font: unicodeFont,
+                            color: PDFLib.rgb(0, 0, 0),
+                        });
+                    }
+                }
+            }
+        }
+        
+        return pdfDoc;
+    }
+
+    async modifyExistingPDF(originalPdfBytes, pageData) {
+        // Load the original PDF and modify it by overlaying translated text
+        const originalPdf = await PDFLib.PDFDocument.load(originalPdfBytes);
+        const pdfDoc = await PDFLib.PDFDocument.create();
+        
+        // Copy all pages from the original PDF
+        const copiedPages = await pdfDoc.copyPages(originalPdf, originalPdf.getPageIndices());
+        
+        // Embed fonts that support Unicode characters
+        let unicodeFont;
+        try {
+            const fontOptions = [
+                PDFLib.StandardFonts.Helvetica,
+                PDFLib.StandardFonts.TimesRoman,
+                PDFLib.StandardFonts.Courier,
+                PDFLib.StandardFonts.Symbol
+            ];
+            
+            for (const fontOption of fontOptions) {
+                try {
+                    unicodeFont = await pdfDoc.embedFont(fontOption, { 
+                        subset: true,
+                        customName: 'UnicodeFont'
+                    });
+                    break;
+                } catch (fontError) {
+                    console.warn(`Font ${fontOption} failed, trying next...`);
+                    continue;
+                }
+            }
+            
+            if (!unicodeFont) {
+                unicodeFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica, {
+                    subset: true,
+                    customName: 'FallbackFont'
+                });
+            }
+        } catch (error) {
+            console.warn('All font embedding failed, using Helvetica:', error);
+            unicodeFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica, {
+                subset: true,
+                customName: 'ErrorFallbackFont'
+            });
+        }
+        
+        // Process each page
+        for (let pageIndex = 0; pageIndex < copiedPages.length; pageIndex++) {
+            const page = copiedPages[pageIndex];
+            pdfDoc.addPage(page);
+            
+            // Find the corresponding page data
+            const pageInfo = pageData.find(p => p.page === pageIndex + 1);
+            if (!pageInfo) continue;
+            
+            // Group text items by their approximate line position
+            const lineGroups = this.groupTextItemsByLines(pageInfo.textItems);
+            
+            for (let lineGroup of lineGroups) {
+                if (lineGroup.length === 0) continue;
+                
+                // Use the font size from the first item in the line
+                const baseFontSize = lineGroup[0].fontSize || 12;
+                
+                // Calculate precise bounding box of original text
+                const minX = Math.min(...lineGroup.map(item => item.x));
+                const maxX = Math.max(...lineGroup.map(item => item.x + (item.width || 0)));
+                const originalWidth = maxX - minX;
+                
+                // Use the first item's Y directly (PDF uses bottom-left origin)
+                const firstItem = lineGroup[0];
+                const x = minX;
+                const y = firstItem.y;
+                
+                // Build the translated line
+                const translatedLine = lineGroup.map(item => item.translatedText || item.text).join('');
+                
+                if (translatedLine.trim()) {
+                    // Sanitize the text for PDF compatibility
+                    const sanitizedLine = this.sanitizeTextForPDF(translatedLine);
+                    
+                    let fontSize = baseFontSize;
+                    let textToDraw = sanitizedLine;
+                    let fontToUse = unicodeFont;
+                    
+                    // Validate text
+                    try {
+                        textToDraw = this.validateTextForFont(sanitizedLine, unicodeFont);
+                    } catch (error) {
+                        textToDraw = this.convertToASCIIOnly(sanitizedLine);
+                    }
+                    
+                    // Measure text width
+                    let textWidth = 0;
+                    try {
+                        textWidth = fontToUse.widthOfTextAtSize(textToDraw, fontSize);
+                    } catch (e) {
+                        textWidth = textToDraw.length * fontSize * 0.6;
+                    }
+                    
+                    // Scale down if translated text is significantly wider than original
+                    // Allow some expansion (e.g. 1.2x) because English might be wider than Korean
+                    if (textWidth > originalWidth * 1.5 && originalWidth > 0) {
+                        const scaleFactor = (originalWidth * 1.5) / textWidth;
+                        fontSize = Math.max(6, fontSize * scaleFactor);
+                        // Recalculate width
+                        try {
+                            textWidth = fontToUse.widthOfTextAtSize(textToDraw, fontSize);
+                        } catch (e) {
+                            textWidth = textToDraw.length * fontSize * 0.6;
+                        }
+                    }
+                    
+                    // Draw white background to cover original text
+                    // Width should be max of original or new text to ensure coverage
+                    const bgWidth = Math.max(textWidth, originalWidth);
+                    
+                    try {
+                        page.drawRectangle({
+                            x: x,
+                            y: y - fontSize * 0.2, // Descent approximation
+                            width: bgWidth,
+                            height: fontSize * 1.2, // Line height approximation
+                            color: PDFLib.rgb(1, 1, 1), // White
+                        });
+                    } catch (e) {
+                        console.warn('Failed to draw background:', e);
+                    }
+                    
+                    try {
+                        page.drawText(textToDraw, {
+                            x: x,
+                            y: y,
+                            size: fontSize,
+                            font: fontToUse,
+                            color: PDFLib.rgb(0, 0, 0),
+                            maxWidth: pageInfo.width - x,
+                        });
+                    } catch (error) {
+                        console.warn('Error drawing text:', error);
+                        // Fallback
+                        const asciiOnlyText = this.convertToASCIIOnly(sanitizedLine);
+                        page.drawText(asciiOnlyText, {
                             x: x,
                             y: y,
                             size: Math.max(6, fontSize * 0.8),
