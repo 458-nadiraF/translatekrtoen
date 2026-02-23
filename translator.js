@@ -535,40 +535,11 @@ class PDFTranslator {
         // Replace problematic Unicode characters that standard PDF fonts can't handle
         if (!text) return '';
         
-        // First, try to preserve Korean characters if present
-        if (this.isKoreanText(text)) {
-            // For Korean text, we'll use a more conservative approach
-            // Allow Korean Hangul syllables, Korean consonants/vowels, basic Latin, and common symbols
-            // Korean Unicode ranges: Hangul syllables, Jamo consonants, Jamo vowels
-            const koreanPattern = /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/g;
-            
-            // Replace only truly problematic characters, preserve Korean text
-            return text
-                .replace(/[∙•·]/g, '*')   // Various bullet points -> asterisk
-                .replace(/[–—]/g, '-')   // Various dashes -> hyphen
-                .replace(/["""]/g, '"')   // Smart quotes -> regular quotes
-                .replace(/['''']/g, "'")  // Smart apostrophes -> regular apostrophe
-                .replace(/[…]/g, '...')   // Ellipsis -> three dots
-                .replace(/[‹›]/g, '<')   // Angle quotes -> less than
-                .replace(/[«»]/g, '<<')  // Guillemets -> double less than
-                .replace(/[±]/g, '+/-')  // Plus-minus
-                .replace(/[×]/g, 'x')     // Multiplication -> x
-                .replace(/[÷]/g, '/')     // Division -> slash
-                .replace(/[≤]/g, '<=')    // Less than or equal
-                .replace(/[≥]/g, '>=')    // Greater than or equal
-                .replace(/[≠]/g, '!=')    // Not equal
-                .replace(/[∞]/g, 'inf')   // Infinity
-                .replace(/[√]/g, 'sqrt')  // Square root
-                .replace(/[™]/g, '(TM)')  // Trademark
-                .replace(/[®]/g, '(R)')   // Registered
-                .replace(/[©]/g, '(C)')   // Copyright
-                .replace(/[^\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F\u0020-\u007E\u00A0-\u00FF\u2010-\u2015\u2022\u2026\u2032-\u2033]/g, (match) => {
-                    // If it's Korean, keep it, otherwise replace with ?
-                    return koreanPattern.test(match) ? match : '?';
-                });
-        }
+        // IMPORTANT: Standard PDF fonts (Helvetica, TimesRoman, etc.) CANNOT encode Korean characters
+        // We need to be selective about which Korean characters to preserve vs. replace
+        // Only preserve Korean Hangul syllables (U+AC00-U+D7AF) which are more commonly supported
+        // Replace Korean Jamo consonants/vowels (U+1100-U+11FF, U+3130-U+318F) as they often cause encoding issues
         
-        // For non-Korean text, replace problematic Unicode characters with ASCII equivalents
         return text
             .replace(/[∙•·]/g, '*')   // Various bullet points -> asterisk
             .replace(/[–—]/g, '-')   // Various dashes -> hyphen
@@ -588,7 +559,8 @@ class PDFTranslator {
             .replace(/[™]/g, '(TM)')  // Trademark
             .replace(/[®]/g, '(R)')   // Registered
             .replace(/[©]/g, '(C)')   // Copyright
-            .replace(/[^\x00-\x7F\u00A0-\u00FF]/g, '?') // Replace any remaining non-Latin with ?
+            .replace(/[\u1100-\u11FF\u3130-\u318F]/g, '?') // Replace Korean Jamo consonants/vowels with ?
+            .replace(/[^\x00-\x7F\u00A0-\u00FF\uAC00-\uD7AF]/g, '?') // Replace any remaining non-Latin/non-Hangul with ?
             .trim();
     }
 
