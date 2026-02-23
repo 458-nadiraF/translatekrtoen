@@ -297,6 +297,52 @@ class PDFTranslator {
         return /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/.test(text);
     }
 
+    sanitizeTextForPDF(text) {
+        // Comprehensive text sanitization for PDF compatibility
+        if (!text) return '';
+        
+        // Handle the specific bullet point character that's causing issues
+        // Unicode 0x2219 (∙) is the problematic character
+        text = text.replace(/\u2219/g, '*');  // Replace bullet with asterisk
+        
+        // Apply the general Unicode filtering
+        return this.filterUnicodeForStandardFonts(text);
+    }
+
+    filterUnicodeForStandardFonts(text) {
+        // Replace problematic Unicode characters that standard PDF fonts can't handle
+        if (!text) return '';
+        
+        // First, try to preserve Korean characters if present
+        if (this.isKoreanText(text)) {
+            // For Korean text, we'll use a more conservative approach
+            return text.replace(/[^\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F\u0020-\u007E\u00A0-\u00FF]/g, '?');
+        }
+        
+        // For non-Korean text, replace problematic Unicode characters with ASCII equivalents
+        return text
+            .replace(/[∙•·]/g, '*')   // Various bullet points -> asterisk
+            .replace(/[–—]/g, '-')   // Various dashes -> hyphen
+            .replace(/["""]/g, '"')   // Smart quotes -> regular quotes
+            .replace(/['''']/g, "'")  // Smart apostrophes -> regular apostrophe
+            .replace(/[…]/g, '...')   // Ellipsis -> three dots
+            .replace(/[‹›]/g, '<')   // Angle quotes -> less than
+            .replace(/[«»]/g, '<<')  // Guillemets -> double less than
+            .replace(/[±]/g, '+/-')  // Plus-minus
+            .replace(/[×]/g, 'x')     // Multiplication -> x
+            .replace(/[÷]/g, '/')     // Division -> slash
+            .replace(/[≤]/g, '<=')    // Less than or equal
+            .replace(/[≥]/g, '>=')    // Greater than or equal
+            .replace(/[≠]/g, '!=')    // Not equal
+            .replace(/[∞]/g, 'inf')   // Infinity
+            .replace(/[√]/g, 'sqrt')  // Square root
+            .replace(/[™]/g, '(TM)')  // Trademark
+            .replace(/[®]/g, '(R)')   // Registered
+            .replace(/[©]/g, '(C)')   // Copyright
+            .replace(/[^\x00-\x7F\u00A0-\u00FF]/g, '?') // Replace any remaining non-Latin with ?
+            .trim();
+    }
+
     applyTranslationsToItems(textItems, translations) {
         for (const item of textItems) {
             if (item.text.trim() && translations.has(item.text)) {
@@ -310,14 +356,41 @@ class PDFTranslator {
     async createTranslatedPDF(pageData) {
         const pdfDoc = await PDFLib.PDFDocument.create();
         
+        // Embed fonts that support Unicode characters
+        let unicodeFont;
+        try {
+            // Try multiple standard fonts in order of Unicode support
+            const fontOptions = [
+                PDFLib.StandardFonts.TimesRoman,
+                PDFLib.StandardFonts.Helvetica,
+                PDFLib.StandardFonts.Courier,
+                PDFLib.StandardFonts.Symbol
+            ];
+            
+            for (const fontOption of fontOptions) {
+                try {
+                    unicodeFont = await pdfDoc.embedFont(fontOption);
+                    break;
+                } catch (fontError) {
+                    console.warn(`Font ${fontOption} failed, trying next...`);
+                    continue;
+                }
+            }
+            
+            // Final fallback
+            if (!unicodeFont) {
+                unicodeFont = await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRoman);
+            }
+        } catch (error) {
+            console.warn('All font embedding failed, using TimesRoman:', error);
+            unicodeFont = await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRoman);
+        }
+        
         for (let pageInfo of pageData) {
             const page = pdfDoc.addPage([pageInfo.width, pageInfo.height]);
             
             // Group text items by their approximate line position for better layout preservation
             const lineGroups = this.groupTextItemsByLines(pageInfo.textItems);
-            
-            // Embed fonts that support Korean and English characters
-            let currentFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
             
             for (let lineGroup of lineGroups) {
                 if (lineGroup.length === 0) continue;
@@ -332,6 +405,8 @@ class PDFTranslator {
                 const translatedLine = lineGroup.map(item => item.translatedText || item.text).join('');
                 
                 if (translatedLine.trim()) {
+                    // Sanitize the text for PDF compatibility
+                    const sanitizedLine = this.sanitizeTextForPDF(translatedLine);
                     // Calculate position for the first item in the line
                     const firstItem = lineGroup[0];
                     const x = firstItem.x || 50;
@@ -339,7 +414,7 @@ class PDFTranslator {
                     
                     // Adjust font size to fit the translated text in the available space
                     let fontSize = baseFontSize;
-                    const translatedWidth = (translatedLine.length * baseFontSize * 0.6); // Approximate width
+                    const translatedWidth = (sanitizedLine.length * baseFontSize * 0.6); // Approximate width
                     
                     // Scale down if translated text is longer
                     if (translatedWidth > totalOriginalWidth && totalOriginalWidth > 0) {
@@ -347,23 +422,25 @@ class PDFTranslator {
                     }
                     
                     try {
-                        page.drawText(translatedLine, {
+                        // Use the sanitized text that handles Unicode issues
+                        page.drawText(sanitizedLine, {
                             x: x,
                             y: y,
                             size: fontSize,
-                            font: currentFont,
+                            font: unicodeFont,
                             color: PDFLib.rgb(0, 0, 0),
                             maxWidth: pageInfo.width - x - 50,
                             lineHeight: fontSize * 1.2,
                         });
                     } catch (error) {
                         console.warn('Error drawing text:', error);
-                        // Fallback: try with smaller font size
-                        page.drawText(translatedLine, {
+                        // Fallback: try with smaller font size and extra sanitization
+                        const extraSanitizedLine = this.filterUnicodeForStandardFonts(sanitizedLine);
+                        page.drawText(extraSanitizedLine, {
                             x: x,
                             y: y,
                             size: Math.max(6, fontSize * 0.8),
-                            font: currentFont,
+                            font: unicodeFont,
                             color: PDFLib.rgb(0, 0, 0),
                         });
                     }
