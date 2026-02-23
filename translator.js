@@ -1,12 +1,24 @@
 // Korean to English PDF Translator
 // Ultra-fast implementation with Google Translate API and advanced optimizations
 
+// Import PDFLib for Node.js environment
+if (typeof module !== 'undefined' && module.exports) {
+    try {
+        var PDFLib = require('pdf-lib');
+    } catch (error) {
+        console.error('Failed to import pdf-lib:', error);
+    }
+}
+
 class PDFTranslator {
     constructor() {
         this.currentPdfBytes = null;
         this.translatedPdf = null;
         this.translationCache = new Map();
-        this.initializeEventListeners();
+        // Only initialize browser-specific elements in browser environment
+        if (typeof document !== 'undefined') {
+            this.initializeEventListeners();
+        }
     }
 
     initializeEventListeners() {
@@ -328,18 +340,76 @@ class PDFTranslator {
     }
 
     validateTextForFont(text, font) {
-        // Validate text can be encoded by the font
+        // Validate text can be encoded by the font - AGGRESSIVE KOREAN CHARACTER HANDLING
         if (!text) return '';
         
         try {
-            // Try to encode the text with the font
-            const testBytes = font.encodeText(text);
+            // First, try to encode the entire text
+            font.encodeText(text);
             return text;
         } catch (error) {
-            console.warn(`Font encoding failed for text: "${text}", error:`, error);
-            // If encoding fails, try to sanitize more aggressively
-            return this.convertToASCIIOnly(text);
+            console.warn(`Font encoding failed for text: "${text}", error:`, error.message);
+            
+            // If encoding fails, we need to filter out unencodable characters
+            let validText = '';
+            let hasInvalidChars = false;
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                try {
+                    // Test individual character encoding
+                    font.encodeText(char);
+                    validText += char;
+                } catch (charError) {
+                    // This character can't be encoded
+                    hasInvalidChars = true;
+                    console.warn(`Character encoding failed: "${char}" (U+${char.charCodeAt(0).toString(16).toUpperCase()})`);
+                    
+                    // CRITICAL: Standard PDF fonts (Helvetica, Times, etc.) CANNOT encode Korean characters
+                    // We must replace them with ASCII alternatives
+                    if (this.isKoreanText(char)) {
+                        // Korean character that can't be encoded - replace with placeholder
+                        console.warn(`Korean character "${char}" cannot be encoded by standard PDF fonts - replacing with placeholder`);
+                        validText += '?'; // Use ? as placeholder for all Korean characters
+                    } else {
+                        // Non-Korean character that failed - try ASCII equivalent
+                        const asciiEquiv = this.convertSingleCharToASCII(char);
+                        validText += asciiEquiv;
+                    }
+                }
+            }
+            
+            if (hasInvalidChars) {
+                console.warn(`Text encoding processed: "${text}" -> "${validText}"`);
+            }
+            
+            // Final validation
+            try {
+                font.encodeText(validText);
+                return validText;
+            } catch (finalError) {
+                console.error(`Final validation still failed for: "${validText}" - using emergency ASCII fallback`);
+                return this.convertToASCIIOnly(text);
+            }
         }
+    }
+
+    convertSingleCharToASCII(char) {
+        // Convert single character to ASCII equivalent
+        const asciiMap = {
+            '∙': '*', '•': '*', '·': '*',
+            '–': '-', '—': '-',
+            '"': '"', '"': '"', '"': '"',
+            "'": "'", "'": "'", "'": "'", "'": "'",
+            '…': '...', '‹': '<', '›': '>',
+            '«': '<<', '»': '>>',
+            '±': '+/-', '×': 'x', '÷': '/',
+            '≤': '<=', '≥': '>=', '≠': '!=',
+            '∞': 'inf', '√': 'sqrt',
+            '™': '(TM)', '®': '(R)', '©': '(C)'
+        };
+        
+        return asciiMap[char] || '?'; // Default to ? for unmapped characters
     }
 
     convertToASCIIOnly(text) {
@@ -372,15 +442,79 @@ class PDFTranslator {
                 .trim() || text; // If everything gets stripped, return original
         }
         
+        // CRITICAL REALIZATION: Standard PDF fonts (Helvetica, Times, etc.) CANNOT encode Korean characters
+        // We must replace ALL Korean characters with ASCII placeholders
+        if (this.isKoreanText(text)) {
+            // Korean text cannot be encoded by standard PDF fonts - replace with placeholders
+            console.warn(`Korean text detected but cannot be encoded by PDF fonts: "${text}" - replacing with placeholders`);
+            
+            // Replace Korean characters with ? and preserve structure
+            return text
+                .replace(/[\uAC00-\uD7AF]/g, '?') // Korean syllables -> ?
+                .replace(/[\u1100-\u11FF]/g, '?') // Korean Jamo (consonants/vowels) -> ?
+                .replace(/[\u3130-\u318F]/g, '?') // Korean compatibility Jamo -> ?
+                .replace(/[∙•·]/g, '*')   // Various bullet points -> asterisk
+                .replace(/[–—]/g, '-')   // Various dashes -> hyphen
+                .replace(/[”“”]/g, '"')   // Smart quotes -> regular quotes
+                .replace(/['''']/g, "'")  // Smart apostrophes -> regular apostrophe
+                .replace(/[…]/g, '...')   // Ellipsis -> three dots
+                .replace(/[‹›]/g, '<')   // Angle quotes -> less than
+                .replace(/[«»]/g, '<<')  // Guillemets -> double less than
+                .replace(/[±]/g, '+/-')  // Plus-minus
+                .replace(/[×]/g, 'x')     // Multiplication -> x
+                .replace(/[÷]/g, '/')     // Division -> slash
+                .replace(/[≤]/g, '<=')    // Less than or equal
+                .replace(/[≥]/g, '>=')    // Greater than or equal
+                .replace(/[≠]/g, '!=')    // Not equal
+                .replace(/[∞]/g, 'inf')   // Infinity
+                .replace(/[√]/g, 'sqrt')  // Square root
+                .replace(/[™]/g, '(TM)')  // Trademark
+                .replace(/[®]/g, '(R)')   // Registered
+                .replace(/[©]/g, '(C)')   // Copyright
+                .trim() || '[Korean Text]'; // If everything gets stripped, return placeholder
+        }
+        
+        // CRITICAL REALIZATION: Standard PDF fonts (Helvetica, Times, etc.) CANNOT encode Korean characters
+        // We must replace ALL Korean characters with ASCII placeholders
+        if (this.isKoreanText(text)) {
+            // Korean text cannot be encoded by standard PDF fonts - replace with placeholders
+            console.warn(`Korean text detected but cannot be encoded by PDF fonts: "${text}" - replacing with placeholders`);
+            
+            // Replace Korean characters with ? and preserve structure
+            return text
+                .replace(/[\uAC00-\uD7AF]/g, '?') // Korean syllables -> ?
+                .replace(/[\u1100-\u11FF]/g, '?') // Korean Jamo (consonants/vowels) -> ?
+                .replace(/[\u3130-\u318F]/g, '?') // Korean compatibility Jamo -> ?
+                .replace(/[∙•·]/g, '*')   // Various bullet points -> asterisk
+                .replace(/[–—]/g, '-')   // Various dashes -> hyphen
+                .replace(/[”“”]/g, '"')   // Smart quotes -> regular quotes
+                .replace(/['''']/g, "'")  // Smart apostrophes -> regular apostrophe
+                .replace(/[…]/g, '...')   // Ellipsis -> three dots
+                .replace(/[‹›]/g, '<')   // Angle quotes -> less than
+                .replace(/[«»]/g, '<<')  // Guillemets -> double less than
+                .replace(/[±]/g, '+/-')  // Plus-minus
+                .replace(/[×]/g, 'x')     // Multiplication -> x
+                .replace(/[÷]/g, '/')     // Division -> slash
+                .replace(/[≤]/g, '<=')    // Less than or equal
+                .replace(/[≥]/g, '>=')    // Greater than or equal
+                .replace(/[≠]/g, '!=')    // Not equal
+                .replace(/[∞]/g, 'inf')   // Infinity
+                .replace(/[√]/g, 'sqrt')  // Square root
+                .replace(/[™]/g, '(TM)')  // Trademark
+                .replace(/[®]/g, '(R)')   // Registered
+                .replace(/[©]/g, '(C)')   // Copyright
+                .trim() || '[Korean Text]'; // If everything gets stripped, return placeholder
+        }
+        
         // For non-Korean text, replace with ASCII equivalents
         return text
             .replace(/[∙•·]/g, '*')
             .replace(/[–—]/g, '-')
-            .replace(/["""]/g, '"')
+            .replace(/[”“”]/g, '"')
             .replace(/['''']/g, "'")
             .replace(/[…]/g, '...')
             .replace(/[‹›«»]/g, '<')
-            .replace(/[±×÷≤≥≠∞√™®©]/g, '?')
+            .replace(/[±×÷≤≥∞√™®©]/g, '?')
             .replace(/[^\x00-\x7F]/g, '?') // Replace any non-ASCII with ?
             .trim() || '[Text]';
     }
@@ -832,4 +966,12 @@ class PDFTranslator {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => new PDFTranslator());
+// Only initialize in browser environment
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => new PDFTranslator());
+}
+
+// Export for Node.js usage
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = PDFTranslator;
+}
