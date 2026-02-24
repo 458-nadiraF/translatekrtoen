@@ -23,8 +23,8 @@ A fast, client-side Korean to English PDF translation tool that works entirely i
 ### Local Development
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/korean-pdf-translator.git
-cd korean-pdf-translator
+git clone https://github.com/458-nadiraF/translatekrtoen.git
+cd translatekrtoen
 
 # Install dependencies
 npm install
@@ -38,7 +38,7 @@ npm start
 2. Go to Settings → Pages
 3. Select "Deploy from a branch"
 4. Choose "gh-pages" branch
-5. Your site will be live at `https://yourusername.github.io/korean-pdf-translator/`
+5. Your site will be live at `https://yourusername.github.io/translatekrtoen/`
 
 ## 🎯 Usage
 
@@ -86,38 +86,16 @@ npm start
 - **No Server Storage**: Files are never uploaded to any server
 - **Secure Translation**: Uses official Google Translate APIs
 
-## 📝 API Integration
-
-The application uses Google Translate API for accurate Korean to English translation. In a production environment, you would:
-
-1. Get a Google Translate API key
-2. Replace the mock translation with real API calls
-3. Implement proper error handling for API limits
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
 ## 🐛 Known Issues
 
-- Text extraction accuracy depends on PDF quality
+- The translated text result didnt show up on PDF Acrobat, but show up on another pdf processing (e.g, 360 Extreme Browser)
+- The speed of processing varies on user PC specification and internet connection
 - Complex layouts may require manual adjustment
 - Very large PDFs (>50MB) may cause browser memory issues
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
 - [pdf-lib](https://github.com/Hopding/pdf-lib) for PDF processing
 - Google Translate for translation services
 - GitHub Pages for free hosting
-
----
-
-**Made with ❤️ for the Korean-English translation community**
