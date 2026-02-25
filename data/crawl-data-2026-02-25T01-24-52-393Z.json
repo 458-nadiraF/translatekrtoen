@@ -1,0 +1,204 @@
+[
+  {
+    "title": "Success Page - ScrapingCourse.com",
+    "url": "https://www.scrapingcourse.com/dashboard",
+    "timestamp": "2026-02-25T01:24:32.205Z",
+    "text": "Scraping\n                    Course\n                \n            \n        \n    \n\n    \n        \n            \n\n    \n        Welcome, Scraper!\n        Logout\n    \n\n    \n    Login Challenge\n\n\n\n    \n        \n        Challenge\n    \n    \n        Authentication Protected Data\n    \n\n\n\n    \n        \n        \n                        \n            \n                Chaz Kangeroo Hoodie\n                \n                $52\n            \n        \n    \n    \n        \n        \n                        \n            \n                Teton Pullover Hoodie\n                \n                $70\n            \n        \n    \n    \n        \n        \n                        \n            \n                Bruno Compete Hoodie\n                \n                $63\n            \n        \n    \n    \n        \n        \n                        \n            \n                Frankie  Sweatshirt\n                \n                $60\n            \n        \n    \n    \n        \n        \n                        \n            \n                Hollister Backyard Sweatshirt\n                \n                $52\n            \n        \n    \n    \n        \n        \n                        \n            \n                Stark Fundamental Hoodie\n                \n                $42\n            \n        \n    \n    \n        \n        \n                        \n            \n                Hero Hoodie\n                \n                $54\n            \n        \n    \n    \n        \n        \n                        \n            \n                Oslo Trek Hoodie\n                \n                $42\n            \n        \n    \n    \n        \n        \n                        \n            \n                Abominable Hoodie\n                \n                $69\n            \n        \n    \n    \n        \n        \n                        \n            \n                Mach Street Sweatshirt\n                \n                $62\n            \n        \n    \n    \n        \n        \n                        \n            \n                Grayson Crewneck Sweatshirt\n                \n                $64\n            \n        \n    \n    \n        \n        \n                        \n            \n                Ajax Full-Zip Sweatshirt\n                \n                $69",
+    "html": "<!DOCTYPE html><html lang=\"en\"><head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <meta http-equiv=\"X-UA-Compatible\" content=\"ie=edge\">\n    <title>Success Page - ScrapingCourse.com</title>\n\n    <!-- Bootstrap CSS -->\n    <link href=\"https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css\" rel=\"stylesheet\">\n    <script src=\"https://challenges.cloudflare.com/turnstile/v0/api.js\" async=\"\" defer=\"\"></script>\n    <!-- Google tag (gtag.js) -->\n    <script async=\"\" src=\"https://www.googletagmanager.com/gtag/js?id=G-NZGD14H87G\"></script>\n    <script>\n        window.dataLayer = window.dataLayer || [];\n        function gtag(){dataLayer.push(arguments);}\n        gtag('js', new Date());\n        gtag('config', 'G-NZGD14H87G');\n    </script>\n    <link rel=\"preload\" as=\"style\" href=\"https://www.scrapingcourse.com/build/assets/app-DxJb4DfE.css\"><link rel=\"modulepreload\" href=\"https://www.scrapingcourse.com/build/assets/app-D2jpX1vH.js\"><link rel=\"stylesheet\" href=\"https://www.scrapingcourse.com/build/assets/app-DxJb4DfE.css\"><script type=\"module\" src=\"https://www.scrapingcourse.com/build/assets/app-D2jpX1vH.js\"></script>\n</head>\n<body data-new-gr-c-s-check-loaded=\"14.1174.0\" data-gr-ext-installed=\"\" itemscope=\"\" itemtype=\"http://schema.org/WebPage\">\n    <header itemscope=\"\" itemtype=\"http://schema.org/WPHeader\">\n        <!-- Navigation bar -->\n        <nav id=\"main-navigation\" class=\"navbar\" data-testid=\"main-navigation\" data-nav=\"main\">\n            <div class=\"container\" id=\"nav-container\" data-testid=\"nav-container\" data-nav=\"container\">\n                <a href=\"/\" class=\"logo-link flex items-center pt-4 pb-12\" id=\"logo-link\" data-testid=\"logo-link\" data-nav=\"logo-link\">\n                    <img width=\"12\" height=\"18\" src=\"https://www.scrapingcourse.com/assets/images/logo.svg\" class=\"logo-image inline-block\" data-testid=\"logo-image\" data-nav=\"logo-image\">\n                    <span class=\"brand-name font-bold text-lg leading-6 ml-2 highlight\" data-testid=\"brand-name-1\" data-nav=\"brand-name-1\">Scraping</span>\n                    <span class=\"brand-name text-lg leading-6 ml-1 highlight\" data-testid=\"brand-name-2\" data-nav=\"brand-name-2\">Course</span>\n                </a>\n            </div>\n        </nav>\n    </header>\n\n    <main class=\"page-content py-4\" id=\"main-content\" data-testid=\"main-content\" data-content=\"main\">\n        <div class=\"container\" id=\"content-container\" data-testid=\"content-container\" data-content=\"container\">\n            <div class=\"catalog\">\n\n    <div class=\"text-right\">\n        <span class=\"text-lg font-semibold\">Welcome, Scraper!</span>\n        <a href=\"https://www.scrapingcourse.com/logout\" onclick=\"event.preventDefault(); document.getElementById('logout-form').submit();\" class=\"text-blue-500 hover:text-blue-700 ml-4\">Logout</a>\n    </div>\n\n    <h1 id=\"page-title\" class=\"page-title text-4xl font-bold mb-2 text-left gradient-text highlight gradient-text leading-10\" data-testid=\"page-title\" data-content=\"title\">\n    Login Challenge\n</h1>\n\n<div class=\"challenge-info bg-[#EDF1FD] rounded-md p-4 mb-8 mt-5\" id=\"challenge-info\" data-testid=\"challenge-info\" data-content=\"challenge-info\">\n    <div class=\"info-header flex items-center gap-2 pb-2\" id=\"info-header\" data-testid=\"info-header\" data-content=\"info-header\">\n        <img width=\"25\" height=\"15\" src=\"https://www.scrapingcourse.com/assets/images/challenge.svg\" data-testid=\"challenge-image\" data-content=\"challenge-image\">\n        <h2 class=\"challenge-title text-xl font-bold\" id=\"challenge-title\" data-testid=\"challenge-title\" data-content=\"challenge-title\">Challenge</h2>\n    </div>\n    <p class=\"challenge-description flex\" id=\"challenge-description\" data-testid=\"challenge-description\" data-content=\"challenge-description\">\n        Authentication Protected Data\n    </p>\n</div>\n\n<div id=\"product-grid\" class=\"product-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8\" data-testid=\"product-grid\">\n    <div class=\"product-item flex flex-col items-center rounded-lg\">\n        \n        <a href=\"https://scrapingcourse.com/ecommerce/product/chaz-kangeroo-hoodie\">\n                        <img class=\"product-image rounded-lg\" width=\"200\" height=\"240\" decoding=\"async\" fetchpriority=\"high\" src=\"https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh01-gray_main.jpg\" alt=\"Chaz Kangeroo Hoodie\">\n            <div class=\"product-info self-start text-left w-full\">\n                <span class=\"product-name\">Chaz Kangeroo Hoodie</span>\n                <br>\n                <span class=\"product-price text-slate-600\">$52</span>\n            </div>\n        </a>\n    </div>\n    <div class=\"product-item flex flex-col items-center rounded-lg\">\n        \n        <a href=\"https://scrapingcourse.com/ecommerce/product/teton-pullover-hoodie\">\n                        <img class=\"product-image rounded-lg\" width=\"200\" height=\"240\" decoding=\"async\" fetchpriority=\"high\" src=\"https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh02-black_main.jpg\" alt=\"Teton Pullover Hoodie\">\n            <div class=\"product-info self-start text-left w-full\">\n                <span class=\"product-name\">Teton Pullover Hoodie</span>\n                <br>\n                <span class=\"product-price text-slate-600\">$70</span>\n            </div>\n        </a>\n    </div>\n    <div class=\"product-item flex flex-col items-center rounded-lg\">\n        \n        <a href=\"https://scrapingcourse.com/ecommerce/product/bruno-compete-hoodie\">\n                        <img class=\"product-image rounded-lg\" width=\"200\" height=\"240\" decoding=\"async\" fetchpriority=\"high\" src=\"https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh03-black_main.jpg\" alt=\"Bruno Compete Hoodie\">\n            <div class=\"product-info self-start text-left w-full\">\n                <span class=\"product-name\">Bruno Compete Hoodie</span>\n                <br>\n                <span class=\"product-price text-slate-600\">$63</span>\n            </div>\n        </a>\n    </div>\n    <div class=\"product-item flex flex-col items-center rounded-lg\">\n        \n        <a href=\"https://scrapingcourse.com/ecommerce/product/frankie--sweatshirt\">\n                        <img class=\"product-image rounded-lg\" width=\"200\" height=\"240\" decoding=\"async\" fetchpriority=\"high\" src=\"https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh04-green_main.jpg\" alt=\"Frankie  Sweatshirt\">\n            <div class=\"product-info self-start text-left w-full\">\n                <span class=\"product-name\">Frankie  Sweatshirt</span>\n                <br>\n                <span class=\"product-price text-slate-600\">$60</span>\n            </div>\n        </a>\n    </div>\n    <div class=\"product-item flex flex-col items-center rounded-lg\">\n        \n        <a href=\"https://scrapingcourse.com/ecommerce/product/hollister-backyard-sweatshirt\">\n                        <img class=\"product-image rounded-lg\" width=\"200\" height=\"240\" decoding=\"async\" fetchpriority=\"high\" src=\"https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh05-white_main.jpg\" alt=\"Hollister Backyard Sweatshirt\">\n            <div class=\"product-info self-start text-left w-full\">\n                <span class=\"product-name\">Hollister Backyard Sweatshirt</span>\n                <br>\n                <span class=\"product-price text-slate-600\">$52</span>\n            </div>\n        </a>\n    </div>\n    <div class=\"product-item flex flex-col items-center rounded-lg\">\n        \n        <a href=\"https://scrapingcourse.com/ecommerce/product/stark-fundamental-hoodie\">\n                        <img class=\"product-image rounded-lg\" width=\"200\" height=\"240\" decoding=\"async\" fetchpriority=\"high\" src=\"https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh06-blue_main.jpg\" alt=\"Stark Fundamental Hoodie\">\n            <div class=\"product-info self-start text-left w-full\">\n                <span class=\"product-name\">Stark Fundamental Hoodie</span>\n                <br>\n                <span class=\"product-price text-slate-600\">$42</span>\n            </div>\n        </a>\n    </div>\n    <div class=\"product-item flex flex-col items-center rounded-lg\">\n        \n        <a href=\"https://scrapingcourse.com/ecommerce/product/hero-hoodie\">\n                        <img class=\"product-image rounded-lg\" width=\"200\" height=\"240\" decoding=\"async\" fetchpriority=\"high\" src=\"https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh07-gray_main.jpg\" alt=\"Hero Hoodie\">\n            <div class=\"product-info self-start text-left w-full\">\n                <span class=\"product-name\">Hero Hoodie</span>\n                <br>\n                <span class=\"product-price text-slate-600\">$54</span>\n            </div>\n        </a>\n    </div>\n    <div class=\"product-item flex flex-col items-center rounded-lg\">\n        \n        <a href=\"https://scrapingcourse.com/ecommerce/product/oslo-trek-hoodie\">\n                        <img class=\"product-image rounded-lg\" width=\"200\" height=\"240\" decoding=\"async\" fetchpriority=\"high\" src=\"https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh08-brown_main.jpg\" alt=\"Oslo Trek Hoodie\">\n            <div class=\"product-info self-start text-left w-full\">\n                <span class=\"product-name\">Oslo Trek Hoodie</span>\n                <br>\n                <span class=\"product-price text-slate-600\">$42</span>\n            </div>\n        </a>\n    </div>\n    <div class=\"product-item flex flex-col items-center rounded-lg\">\n        \n        <a href=\"https://scrapingcourse.com/ecommerce/product/abominable-hoodie\">\n                        <img class=\"product-image rounded-lg\" width=\"200\" height=\"240\" decoding=\"async\" fetchpriority=\"high\" src=\"https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh09-blue_main.jpg\" alt=\"Abominable Hoodie\">\n            <div class=\"product-info self-start text-left w-full\">\n                <span class=\"product-name\">Abominable Hoodie</span>\n                <br>\n                <span class=\"product-price text-slate-600\">$69</span>\n            </div>\n        </a>\n    </div>\n    <div class=\"product-item flex flex-col items-center rounded-lg\">\n        \n        <a href=\"https://scrapingcourse.com/ecommerce/product/mach-street-sweatshirt\">\n                        <img class=\"product-image rounded-lg\" width=\"200\" height=\"240\" decoding=\"async\" fetchpriority=\"high\" src=\"https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh10-blue_main.jpg\" alt=\"Mach Street Sweatshirt\">\n            <div class=\"product-info self-start text-left w-full\">\n                <span class=\"product-name\">Mach Street Sweatshirt</span>\n                <br>\n                <span class=\"product-price text-slate-600\">$62</span>\n            </div>\n        </a>\n    </div>\n    <div class=\"product-item flex flex-col items-center rounded-lg\">\n        \n        <a href=\"https://scrapingcourse.com/ecommerce/product/grayson-crewneck-sweatshirt\">\n                        <img class=\"product-image rounded-lg\" width=\"200\" height=\"240\" decoding=\"async\" fetchpriority=\"high\" src=\"https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh11-white_main.jpg\" alt=\"Grayson Crewneck Sweatshirt\">\n            <div class=\"product-info self-start text-left w-full\">\n                <span class=\"product-name\">Grayson Crewneck Sweatshirt</span>\n                <br>\n                <span class=\"product-price text-slate-600\">$64</span>\n            </div>\n        </a>\n    </div>\n    <div class=\"product-item flex flex-col items-center rounded-lg\">\n        \n        <a href=\"https://scrapingcourse.com/ecommerce/product/ajax-full-zip-sweatshirt\">\n                        <img class=\"product-image rounded-lg\" width=\"200\" height=\"240\" decoding=\"async\" fetchpriority=\"high\" src=\"https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh12-green_main.jpg\" alt=\"Ajax Full-Zip Sweatshirt\">\n            <div class=\"product-info self-start text-left w-full\">\n                <span class=\"product-name\">Ajax Full-Zip Sweatshirt</span>\n                <br>\n                <span class=\"product-price text-slate-600\">$69</span>\n            </div>\n        </a>\n    </div>\n</div>\n\n</div>\n\n<form id=\"logout-form\" action=\"https://www.scrapingcourse.com/logout\" method=\"POST\" style=\"display: none;\">\n    <input type=\"hidden\" name=\"_token\" value=\"TJg9NWIr6Sg3b1Sb0C4xqjO17Sn5FzJ3S33I5Sjo\" autocomplete=\"off\"></form>\n\n        </div>\n    </main>\n\n    <!-- Bootstrap and jQuery libraries -->\n    <script src=\"https://code.jquery.com/jquery-3.5.1.slim.min.js\"></script>\n    <script src=\"https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js\"></script>\n    <script src=\"https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js\"></script>\n<script defer=\"\" src=\"https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015\" integrity=\"sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==\" data-cf-beacon=\"{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;dc76487696114845bef00828a13eaa5f&quot;,&quot;r&quot;:1,&quot;server_timing&quot;:{&quot;name&quot;:{&quot;cfCacheStatus&quot;:true,&quot;cfEdge&quot;:true,&quot;cfExtPri&quot;:true,&quot;cfL4&quot;:true,&quot;cfOrigin&quot;:true,&quot;cfSpeedBrain&quot;:true},&quot;location_startswith&quot;:null}}\" crossorigin=\"anonymous\"></script>\n\n\n</body></html>",
+    "links": [
+      {
+        "text": "Scraping\n                    Course",
+        "url": "https://www.scrapingcourse.com/",
+        "title": "",
+        "target": "_self"
+      },
+      {
+        "text": "Logout",
+        "url": "https://www.scrapingcourse.com/logout",
+        "title": "",
+        "target": "_self"
+      },
+      {
+        "text": "Chaz Kangeroo Hoodie\n                \n                $52",
+        "url": "https://scrapingcourse.com/ecommerce/product/chaz-kangeroo-hoodie",
+        "title": "",
+        "target": "_self"
+      },
+      {
+        "text": "Teton Pullover Hoodie\n                \n                $70",
+        "url": "https://scrapingcourse.com/ecommerce/product/teton-pullover-hoodie",
+        "title": "",
+        "target": "_self"
+      },
+      {
+        "text": "Bruno Compete Hoodie\n                \n                $63",
+        "url": "https://scrapingcourse.com/ecommerce/product/bruno-compete-hoodie",
+        "title": "",
+        "target": "_self"
+      },
+      {
+        "text": "Frankie  Sweatshirt\n                \n                $60",
+        "url": "https://scrapingcourse.com/ecommerce/product/frankie--sweatshirt",
+        "title": "",
+        "target": "_self"
+      },
+      {
+        "text": "Hollister Backyard Sweatshirt\n                \n                $52",
+        "url": "https://scrapingcourse.com/ecommerce/product/hollister-backyard-sweatshirt",
+        "title": "",
+        "target": "_self"
+      },
+      {
+        "text": "Stark Fundamental Hoodie\n                \n                $42",
+        "url": "https://scrapingcourse.com/ecommerce/product/stark-fundamental-hoodie",
+        "title": "",
+        "target": "_self"
+      },
+      {
+        "text": "Hero Hoodie\n                \n                $54",
+        "url": "https://scrapingcourse.com/ecommerce/product/hero-hoodie",
+        "title": "",
+        "target": "_self"
+      },
+      {
+        "text": "Oslo Trek Hoodie\n                \n                $42",
+        "url": "https://scrapingcourse.com/ecommerce/product/oslo-trek-hoodie",
+        "title": "",
+        "target": "_self"
+      },
+      {
+        "text": "Abominable Hoodie\n                \n                $69",
+        "url": "https://scrapingcourse.com/ecommerce/product/abominable-hoodie",
+        "title": "",
+        "target": "_self"
+      },
+      {
+        "text": "Mach Street Sweatshirt\n                \n                $62",
+        "url": "https://scrapingcourse.com/ecommerce/product/mach-street-sweatshirt",
+        "title": "",
+        "target": "_self"
+      },
+      {
+        "text": "Grayson Crewneck Sweatshirt\n                \n                $64",
+        "url": "https://scrapingcourse.com/ecommerce/product/grayson-crewneck-sweatshirt",
+        "title": "",
+        "target": "_self"
+      },
+      {
+        "text": "Ajax Full-Zip Sweatshirt\n                \n                $69",
+        "url": "https://scrapingcourse.com/ecommerce/product/ajax-full-zip-sweatshirt",
+        "title": "",
+        "target": "_self"
+      }
+    ],
+    "images": [
+      {
+        "src": "https://www.scrapingcourse.com/assets/images/logo.svg",
+        "alt": "",
+        "title": "",
+        "width": "12",
+        "height": "18"
+      },
+      {
+        "src": "https://www.scrapingcourse.com/assets/images/challenge.svg",
+        "alt": "",
+        "title": "",
+        "width": "25",
+        "height": "15"
+      },
+      {
+        "src": "https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh01-gray_main.jpg",
+        "alt": "Chaz Kangeroo Hoodie",
+        "title": "",
+        "width": "200",
+        "height": "240"
+      },
+      {
+        "src": "https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh02-black_main.jpg",
+        "alt": "Teton Pullover Hoodie",
+        "title": "",
+        "width": "200",
+        "height": "240"
+      },
+      {
+        "src": "https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh03-black_main.jpg",
+        "alt": "Bruno Compete Hoodie",
+        "title": "",
+        "width": "200",
+        "height": "240"
+      },
+      {
+        "src": "https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh04-green_main.jpg",
+        "alt": "Frankie  Sweatshirt",
+        "title": "",
+        "width": "200",
+        "height": "240"
+      },
+      {
+        "src": "https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh05-white_main.jpg",
+        "alt": "Hollister Backyard Sweatshirt",
+        "title": "",
+        "width": "200",
+        "height": "240"
+      },
+      {
+        "src": "https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh06-blue_main.jpg",
+        "alt": "Stark Fundamental Hoodie",
+        "title": "",
+        "width": "200",
+        "height": "240"
+      },
+      {
+        "src": "https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh07-gray_main.jpg",
+        "alt": "Hero Hoodie",
+        "title": "",
+        "width": "200",
+        "height": "240"
+      },
+      {
+        "src": "https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh08-brown_main.jpg",
+        "alt": "Oslo Trek Hoodie",
+        "title": "",
+        "width": "200",
+        "height": "240"
+      },
+      {
+        "src": "https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh09-blue_main.jpg",
+        "alt": "Abominable Hoodie",
+        "title": "",
+        "width": "200",
+        "height": "240"
+      },
+      {
+        "src": "https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh10-blue_main.jpg",
+        "alt": "Mach Street Sweatshirt",
+        "title": "",
+        "width": "200",
+        "height": "240"
+      },
+      {
+        "src": "https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh11-white_main.jpg",
+        "alt": "Grayson Crewneck Sweatshirt",
+        "title": "",
+        "width": "200",
+        "height": "240"
+      },
+      {
+        "src": "https://scrapingcourse.com/ecommerce/wp-content/uploads/2024/03/mh12-green_main.jpg",
+        "alt": "Ajax Full-Zip Sweatshirt",
+        "title": "",
+        "width": "200",
+        "height": "240"
+      }
+    ],
+    "meta": {
+      "description": "",
+      "keywords": "",
+      "author": "",
+      "viewport": "width=device-width, initial-scale=1.0",
+      "charset": "UTF-8"
+    },
+    "statusCode": 200,
+    "contentType": "text/html; charset=UTF-8"
+  }
+]
